@@ -32,27 +32,92 @@
   const db   = getDatabase(app);
   const auth = getAuth(app);
 
-  // ── Chat (grupo geral) ──
+  // ── Chat (grupo geral) - CORRIGIDO ──
   const chatRef = ref(db, 'ficr_chat');
-  window._fbChatSend = (msg) => push(chatRef, msg);
-  window._fbChatListen = (cb) => {
-    const q = query(chatRef, limitToLast(100));
-    if (window._fbChatUnsub) { window._fbChatUnsub(); window._fbChatUnsub = null; }
-    window._fbChatUnsub = onValue(q, snap => {
-      const msgs = [];
-      snap.forEach(child => msgs.push({id: child.key, ...child.val()}));
-      cb(msgs);
-    });
-    return () => { if (window._fbChatUnsub) { window._fbChatUnsub(); window._fbChatUnsub = null; } };
+
+  // Função para enviar mensagem - VERSÃO CORRIGIDA
+  window._fbChatSend = async (msg) => {
+    // Garantir que a mensagem seja um objeto plano, sem funções
+    const messageToSend = {
+      name: String(msg.name || 'Anônimo'),
+      uid: String(msg.uid || ''),
+      text: String(msg.text || ''),
+      mediaUrl: msg.mediaUrl || null,
+      time: String(msg.time || new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})),
+      ts: Date.now(),
+      isSticker: Boolean(msg.isSticker || false),
+      isSystem: Boolean(msg.isSystem || false)
+    };
+    try {
+      await push(chatRef, messageToSend);
+      return true;
+    } catch(e) {
+      console.error('Erro ao enviar mensagem:', e);
+      return false;
+    }
   };
 
-  // ── Chat por canal (grupos/DMs) ──
-  window._fbChannelSend = (channel, msg) => push(ref(db, 'ficr_channels/'+channel), msg);
+  window._fbChatListen = (cb) => {
+    const q = query(chatRef, limitToLast(100));
+    if (window._fbChatUnsub) { 
+      window._fbChatUnsub(); 
+      window._fbChatUnsub = null; 
+    }
+    window._fbChatUnsub = onValue(q, snap => {
+      const msgs = [];
+      snap.forEach(child => {
+        const val = child.val();
+        msgs.push({
+          id: child.key, 
+          ...val,
+          text: val.text || '',
+          name: val.name || 'Anônimo',
+          time: val.time || new Date(val.ts || Date.now()).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
+        });
+      });
+      cb(msgs);
+    });
+    return () => { 
+      if (window._fbChatUnsub) { 
+        window._fbChatUnsub(); 
+        window._fbChatUnsub = null; 
+      } 
+    };
+  };
+
+  // ── Chat por canal (grupos/DMs) - CORRIGIDO ──
+  window._fbChannelSend = async (channel, msg) => {
+    const messageToSend = {
+      name: String(msg.name || 'Anônimo'),
+      uid: String(msg.uid || ''),
+      text: String(msg.text || ''),
+      mediaUrl: msg.mediaUrl || null,
+      time: String(msg.time || new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})),
+      ts: Date.now(),
+      isSticker: Boolean(msg.isSticker || false)
+    };
+    try {
+      await push(ref(db, 'ficr_channels/' + channel), messageToSend);
+      return true;
+    } catch(e) {
+      console.error('Erro ao enviar mensagem para canal:', e);
+      return false;
+    }
+  };
+
   window._fbChannelListen = (channel, cb) => {
-    const q = query(ref(db, 'ficr_channels/'+channel), limitToLast(100));
+    const q = query(ref(db, 'ficr_channels/' + channel), limitToLast(100));
     return onValue(q, snap => {
       const msgs = [];
-      snap.forEach(child => msgs.push({id: child.key, ...child.val()}));
+      snap.forEach(child => {
+        const val = child.val();
+        msgs.push({
+          id: child.key, 
+          ...val,
+          text: val.text || '',
+          name: val.name || 'Anônimo'
+        });
+      });
       cb(msgs);
     });
   };
