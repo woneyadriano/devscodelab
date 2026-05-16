@@ -1,0 +1,2989 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-visual">
+<title>DEVS CODE LAB | Hub Interativo de Programação</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+
+<script type="module">
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, query, limitToLast }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    sendEmailVerification, onAuthStateChanged, signOut, updateProfile
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBBEWcgia5aMjPqLdGtuIhXvbDitb1ozFs",
+    authDomain:        "ficr-64874.firebaseapp.com",
+    databaseURL:       "https://ficr-64874-default-rtdb.firebaseio.com",
+    projectId:         "ficr-64874",
+    storageBucket:     "ficr-64874.firebasestorage.app",
+    messagingSenderId: "79578770887",
+    appId:             "1:79578770887:web:3cc7bd422325907fa77de2",
+    measurementId:     "G-CLFGTESNJN"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const db   = getDatabase(app);
+  const auth = getAuth(app);
+
+  // ── Chat (grupo geral) ──
+  const chatRef = ref(db, 'ficr_chat');
+  window._fbChatSend = (msg) => push(chatRef, msg);
+  window._fbChatListen = (cb) => {
+    const q = query(chatRef, limitToLast(100));
+    if (window._fbChatUnsub) { window._fbChatUnsub(); window._fbChatUnsub = null; }
+    window._fbChatUnsub = onValue(q, snap => {
+      const msgs = [];
+      snap.forEach(child => msgs.push({id: child.key, ...child.val()}));
+      cb(msgs);
+    });
+    return () => { if (window._fbChatUnsub) { window._fbChatUnsub(); window._fbChatUnsub = null; } };
+  };
+
+  // ── Chat por canal (grupos/DMs) ──
+  window._fbChannelSend = (channel, msg) => push(ref(db, 'ficr_channels/'+channel), msg);
+  window._fbChannelListen = (channel, cb) => {
+    const q = query(ref(db, 'ficr_channels/'+channel), limitToLast(100));
+    return onValue(q, snap => {
+      const msgs = [];
+      snap.forEach(child => msgs.push({id: child.key, ...child.val()}));
+      cb(msgs);
+    });
+  };
+
+  // ── Grupos ──
+  const groupsRef = ref(db, 'ficr_groups');
+  window._fbGroupsListen = (cb) => onValue(groupsRef, snap => {
+    const groups = [];
+    snap.forEach(child => groups.push({id: child.key, ...child.val()}));
+    cb(groups);
+  });
+  window._fbGroupCreate = (group) => push(groupsRef, group);
+
+  // ── Perfis de usuário ──
+  window._fbProfileSave = async (uid, profile) => {
+    const {set: s} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    await s(ref(db, 'ficr_profiles/'+uid), profile);
+  };
+  window._fbProfileGet = (uid, cb) => onValue(ref(db, 'ficr_profiles/'+uid), snap => cb(snap.val()));
+  window._fbAllProfilesListen = (cb) => onValue(ref(db, 'ficr_profiles'), snap => {
+    const profiles = {};
+    snap.forEach(child => { profiles[child.key] = child.val(); });
+    cb(profiles);
+  });
+
+  // ── Presença ──
+  window._fbPresenceSet = async (uid, name) => {
+    const {set: s} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    await s(ref(db, 'ficr_presence/'+uid), {name, online: true, last: Date.now()});
+  };
+  window._fbPresenceListen = (cb) => onValue(ref(db, 'ficr_presence'), snap => {
+    const online = {};
+    const now = Date.now();
+    snap.forEach(child => {
+      const d = child.val();
+      if(d.online && (now - (d.last||0)) < 120000) online[child.key] = d.name;
+    });
+    cb(online);
+  });
+
+  // ── updateProfile exposto ──
+  window._fbUpdateDisplayName = async (name) => {
+    if(auth.currentUser) { await updateProfile(auth.currentUser, {displayName: name}); return true; }
+    return false;
+  };
+
+  // ── Feedbacks ──
+  const fbRef = ref(db, 'ficr_feedbacks');
+  window._fbFeedbackSend = (fb) => push(fbRef, fb);
+  window._fbFeedbackListen = (cb) => {
+    onValue(fbRef, snap => {
+      const list = [];
+      snap.forEach(child => list.push(child.val()));
+      cb(list);
+    });
+  };
+
+  // ── Auth API exposed to global scope ──
+  window._fbAuth = {
+    register: async (name, email, password) => {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name });
+      await sendEmailVerification(cred.user);
+      return cred.user;
+    },
+    login: async (email, password) => {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      return cred.user;
+    },
+    logout: () => signOut(auth),
+    onAuthChange: (cb) => onAuthStateChanged(auth, cb),
+    resendVerification: async () => {
+      if (auth.currentUser) await sendEmailVerification(auth.currentUser);
+    }
+  };
+
+  window._firebaseReady = true;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+:root {
+  --green: #25D366;
+  --dark-green: #075E54;
+  --light-green: #128C7E;
+  --bg: #0b1120;
+  --surface: #111827;
+  --surface2: #1f2937;
+  --border: #374151;
+  --text: #f9fafb;
+  --text-muted: #9ca3af;
+  --accent: #25D366;
+  --yellow: #fbbf24;
+  --blue: #3b82f6;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --orange: #f97316;
+  --radius: 20px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ==================== HERO REDESIGNADO ==================== */
+.hero {
+  background: linear-gradient(135deg, #070d1a 0%, #0a1f14 40%, #060e1e 100%);
+  padding: 0;
+  text-align: center;
+  border-bottom: 1px solid rgba(37,211,102,0.3);
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(37,211,102,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37,211,102,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridShift 20s linear infinite;
+}
+@keyframes gridShift { from{background-position:0 0;} to{background-position:40px 40px;} }
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(37,211,102,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 20% 50%, rgba(7,94,84,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 40% at 80% 50%, rgba(59,130,246,0.06) 0%, transparent 50%);
+}
+.hero-inner {
+  position: relative;
+  padding: 2.5rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.hero-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.hero-logo-icon {
+  width: 62px; height: 62px;
+  background: linear-gradient(135deg, var(--dark-green), var(--light-green));
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 0 30px rgba(37,211,102,0.35), 0 0 60px rgba(37,211,102,0.12);
+  animation: iconPulse 3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes iconPulse {
+  0%,100%{box-shadow:0 0 30px rgba(37,211,102,0.35),0 0 60px rgba(37,211,102,0.12);}
+  50%{box-shadow:0 0 40px rgba(37,211,102,0.55),0 0 80px rgba(37,211,102,0.2);}
+}
+.hero-title-block { display: flex; flex-direction: column; align-items: flex-start; }
+.hero-subtitle-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--green);
+  background: rgba(37,211,102,0.1);
+  border: 1px solid rgba(37,211,102,0.25);
+  padding: 2px 10px;
+  border-radius: 40px;
+  margin-bottom: 4px;
+}
+.hero-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.7rem, 5vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: var(--text);
+  position: relative;
+}
+.hero-title .ficr { color: #e2e8f0; }
+.hero-title .code { color: var(--green); text-shadow: 0 0 20px rgba(37,211,102,0.5); }
+.hero-title .lab {
+  color: transparent;
+  background: linear-gradient(90deg, var(--green), #06d6a0, var(--blue));
+  -webkit-background-clip: text; background-clip: text;
+}
+.hero-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.6rem;
+  max-width: 560px;
+  line-height: 1.6;
+}
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 0.8rem;
+}
+.hero-badge {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  border-radius: 40px;
+  padding: 4px 12px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+}
+.hero-badge i { color: var(--green); font-size: 0.7rem; }
+.hero-scan-line {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scanLine 3s ease-in-out infinite;
+}
+@keyframes scanLine { 0%,100%{opacity:0.3;transform:scaleX(0.3);} 50%{opacity:1;transform:scaleX(1);} }
+
+/* ==================== TABS ==================== */
+.tabs-nav {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 0.7rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(12px);
+}
+.tab-btn {
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-muted); font-family: 'Syne', sans-serif;
+  font-weight: 600; font-size: 0.78rem; padding: 6px 14px;
+  border-radius: 40px; cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.tab-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+.tab-btn.active { background: var(--dark-green); color: white; border-color: var(--green); }
+.tab-btn.tab-activities { }
+.tab-btn.tab-activities.active {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-color: #8b5cf6;
+}
+.tab-content { display: none; padding: 1.5rem; max-width: 1400px; margin: 0 auto; animation: fadeUp 0.25s ease; }
+.tab-content.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.2rem; }
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.4rem; transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--dark-green); }
+.card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 8px; }
+.card h3 i { color: var(--green); }
+
+/* ==================== HISTORY & LANG CARDS ==================== */
+.history-badge {
+  background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.05));
+  border-left: 3px solid var(--yellow);
+  padding: 0.7rem 1rem; border-radius: 12px;
+  font-size: 0.82rem; margin-bottom: 1rem; color: #fde68a;
+}
+.lang-history-full {
+  background: linear-gradient(135deg, rgba(37,211,102,0.05), rgba(7,94,84,0.08));
+  border: 1px solid rgba(37,211,102,0.15);
+  border-radius: 14px; padding: 1rem; margin: 0.8rem 0;
+  font-size: 0.82rem; line-height: 1.8; color: var(--text-muted);
+}
+.lang-history-full strong { color: var(--green); }
+.curiosity-box {
+  background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(79,70,229,0.05));
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 14px; padding: 1rem; margin: 0.8rem 0;
+}
+.curiosity-box h4 { font-size: 0.82rem; color: #a78bfa; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px; }
+.curiosity-item { font-size: 0.78rem; color: var(--text-muted); padding: 4px 0; border-bottom: 1px solid rgba(139,92,246,0.08); line-height: 1.6; }
+.curiosity-item:last-child { border-bottom: none; }
+.curiosity-item span { color: #c4b5fd; font-weight: 600; }
+
+.code-block {
+  background: #0d1117; border: 1px solid #30363d; border-radius: 12px 12px 0 0;
+  padding: 1rem; font-family: 'Space Mono', monospace; font-size: 0.72rem;
+  overflow-x: auto; color: #e6edf3; line-height: 1.7; margin-top: 0.8rem; margin-bottom: 0;
+}
+.code-output-bar {
+  background: #161b22; border: 1px solid #30363d; border-top: 2px solid var(--green);
+  border-radius: 0 0 12px 12px;
+  padding: 0.7rem 1rem; font-family: 'Space Mono', monospace; font-size: 0.7rem;
+  color: #7ee787; line-height: 1.7; margin-bottom: 0.8rem;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.code-output-bar::before { content: '▶'; color: var(--green); font-size: 0.65rem; margin-top: 2px; flex-shrink: 0; }
+.output-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.65rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.2rem;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.output-label::before { content: ''; display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+.fact-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.8rem 0; }
+.fact-tag {
+  background: rgba(37,211,102,0.08); border: 1px solid rgba(37,211,102,0.2);
+  color: var(--green); border-radius: 40px; padding: 3px 10px;
+  font-size: 0.7rem; font-weight: 600;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border-radius: 40px; border: none;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.8rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-green { background: var(--dark-green); color: white; }
+.btn-green:hover { background: var(--light-green); transform: scale(0.97); }
+.btn-outline { background: transparent; border: 1px solid var(--green); color: var(--green); }
+.btn-outline:hover { background: rgba(37,211,102,0.1); }
+.btn-purple { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border: none; }
+.btn-purple:hover { filter: brightness(1.1); transform: scale(0.97); }
+.btn-blue { background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; border: none; }
+.btn-blue:hover { filter: brightness(1.1); }
+
+/* QUIZ MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px); z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  visibility: hidden; opacity: 0; transition: 0.25s;
+}
+.modal-overlay.open { visibility: visible; opacity: 1; }
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 28px; padding: 1.6rem; max-width: 700px;
+  width: 94%; max-height: 88vh; overflow-y: auto;
+}
+.modal-box h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+.q-item { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 1rem; margin-bottom: 0.8rem; }
+.q-text { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.7rem; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-muted); border-radius: 40px; padding: 5px 14px;
+  font-size: 0.78rem; cursor: pointer; transition: 0.15s;
+  font-family: 'Syne', sans-serif; font-weight: 600;
+}
+.opt:hover { border-color: var(--green); color: var(--green); }
+.opt.selected { background: var(--dark-green); color: white; border-color: var(--green); }
+.opt.correct { background: #16a34a; color: white; border-color: #22c55e; }
+.opt.wrong { background: #b91c1c; color: white; border-color: #ef4444; }
+.quiz-result {
+  background: linear-gradient(135deg, rgba(37,211,102,0.1), rgba(7,94,84,0.2));
+  border: 1px solid var(--green); border-radius: 16px;
+  padding: 1rem; text-align: center; margin-top: 1rem;
+  font-size: 1.1rem; font-weight: 700;
+}
+/* CHAT */
+.chat-wrap {
+  background: #111; border: 1px solid var(--border);
+  border-radius: 24px; overflow: hidden;
+  display: flex; flex-direction: column;
+  height: 72vh; height: 72dvh; min-height: 400px;
+  /* Mobile: prevent keyboard from hiding input */
+  position: relative;
+}
+.chat-header-bar {
+  background: var(--dark-green); padding: 12px 18px;
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 0.95rem; flex-shrink: 0;
+}
+.online-dot { width: 9px; height: 9px; background: var(--green); border-radius: 50%; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.chat-msgs {
+  flex: 1; overflow-y: auto; padding: 1rem;
+  display: flex; flex-direction: column; gap: 6px;
+  background: #0e1a14;
+  background-image: radial-gradient(rgba(37,211,102,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.chat-msgs::-webkit-scrollbar { width: 4px; }
+.chat-msgs::-webkit-scrollbar-track { background: transparent; }
+.chat-msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.bubble {
+  max-width: 72%; padding: 8px 12px; border-radius: 16px;
+  font-size: 0.87rem; word-wrap: break-word; line-height: 1.5; position: relative;
+}
+.bubble-me { background: #1a4731; border: 1px solid rgba(37,211,102,0.2); align-self: flex-end; border-bottom-right-radius: 4px; }
+.bubble-other { background: var(--surface2); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+.bubble-system {
+  background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2);
+  align-self: center; font-size: 0.72rem; color: var(--yellow);
+  padding: 4px 12px; border-radius: 40px; max-width: 90%; text-align: center;
+}
+.bubble-name { font-size: 0.68rem; color: var(--green); font-weight: 700; margin-bottom: 2px; }
+.bubble-time { font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; text-align: right; }
+.chat-input-bar { background: var(--surface); border-top: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.emoji-strip { display: flex; flex-wrap: wrap; gap: 3px; max-height: 80px; overflow-y: auto; }
+.emoji-strip button { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 2px 4px; border-radius: 6px; transition: background 0.1s; line-height: 1; }
+.emoji-strip button:hover { background: var(--surface2); }
+.chat-row { display: flex; gap: 8px; align-items: center; }
+.chat-input {
+  flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 24px; padding: 9px 14px; color: var(--text);
+  font-family: 'Syne', sans-serif; font-size: 16px; outline: none;
+}
+.chat-input:focus { border-color: var(--green); }
+.chat-name-input {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 6px 12px; color: var(--text);
+  font-family: 'Syne', sans-serif; font-size: 0.78rem;
+  flex: 1; min-width: 0; outline: none;
+}
+.chat-name-input:focus { border-color: var(--green); }
+.icon-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50%; width: 38px; height: 38px; min-width: 38px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1rem; color: var(--text-muted);
+  transition: 0.15s; flex-shrink: 0;
+}
+.icon-btn:hover { border-color: var(--green); color: var(--green); }
+.fb-status-banner {
+  background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 12px; padding: 8px 14px; font-size: 0.78rem;
+  color: #fde68a; margin-bottom: 0.8rem; display: none;
+}
+.prompt-area {
+  background: #0d1117; border: 1px solid #30363d; border-radius: 16px;
+  padding: 1rem; font-family: 'Space Mono', monospace; font-size: 0.8rem;
+  color: #e6edf3; width: 100%; min-height: 120px; resize: vertical; outline: none;
+}
+.prompt-area:focus { border-color: var(--green); }
+.prompt-output {
+  background: #0d1117; border: 1px solid #30363d; border-radius: 16px;
+  padding: 1rem; font-family: 'Space Mono', monospace; font-size: 0.78rem;
+  color: #7ee787; min-height: 100px; white-space: pre-wrap; margin-top: 1rem; line-height: 1.7;
+}
+.img-upload-zone {
+  border: 2px dashed var(--border); border-radius: 16px; padding: 1.5rem;
+  text-align: center; cursor: pointer; transition: 0.2s;
+  color: var(--text-muted); font-size: 0.85rem;
+}
+.img-upload-zone:hover { border-color: var(--green); color: var(--green); }
+.img-upload-zone.has-image { border-color: var(--green); background: rgba(37,211,102,0.04); }
+.img-upload-zone img { max-width: 100%; max-height: 180px; border-radius: 12px; margin-top: 8px; }
+.stars-row { display: flex; gap: 6px; font-size: 2rem; cursor: pointer; margin: 0.8rem 0; }
+.star { color: var(--border); transition: color 0.15s; }
+.star.lit { color: var(--yellow); }
+.star:hover { transform: scale(1.2); }
+.fb-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 1.2rem; margin-bottom: 0.8rem;
+  transition: border-color 0.2s; animation: fadeUp 0.3s ease;
+}
+.fb-card:hover { border-color: var(--dark-green); }
+.fb-star-display { color: var(--yellow); font-size: 0.9rem; }
+.fb-tag { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; border-radius: 40px; padding: 2px 10px; font-size: 0.68rem; font-weight: 700; }
+.progress-bar-outer { background: var(--surface2); border-radius: 40px; height: 8px; margin: 4px 0; overflow: hidden; }
+.progress-bar-inner { height: 100%; border-radius: 40px; background: linear-gradient(90deg, var(--dark-green), var(--green)); transition: width 0.5s ease; }
+input[type="text"], input[type="email"], textarea, select { font-family: 'Syne', sans-serif; }
+select { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none; }
+select:focus { border-color: var(--green); }
+.textarea-fb { background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 12px; color: var(--text); width: 100%; min-height: 100px; resize: vertical; font-size: 0.88rem; outline: none; }
+.textarea-fb:focus { border-color: var(--green); }
+.input-line { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px; color: var(--text); font-size: 0.85rem; outline: none; width: 100%; }
+.input-line:focus { border-color: var(--green); }
+label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px; margin-top: 10px; }
+footer { text-align: center; padding: 1rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.75rem; background: var(--surface); }
+.loading-dots::after { content: '...'; animation: dots 1.2s steps(4, end) infinite; }
+@keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} 100%{content:''} }
+
+/* ==================== ABA ATIVIDADES ==================== */
+.activities-hero {
+  background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.1), rgba(17,24,39,0));
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 20px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.activities-hero::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(139,92,246,0.15), transparent 70%);
+  border-radius: 50%;
+}
+.activities-hero h2 {
+  font-size: 1.4rem; font-weight: 800;
+  background: linear-gradient(90deg, #a78bfa, #818cf8, #38bdf8);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  margin-bottom: 0.4rem;
+}
+.activities-hero p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; }
+
+.act-filter-row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.2rem; align-items: center;
+}
+.act-filter-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-muted); font-family: 'Syne', sans-serif;
+  font-weight: 600; font-size: 0.72rem; padding: 5px 14px;
+  border-radius: 40px; cursor: pointer; transition: all 0.2s;
+}
+.act-filter-btn:hover { border-color: var(--purple); color: #a78bfa; }
+.act-filter-btn.active { background: rgba(124,58,237,0.2); border-color: var(--purple); color: #a78bfa; }
+
+.act-search {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 40px; padding: 6px 16px; color: var(--text);
+  font-family: 'Syne', sans-serif; font-size: 0.8rem;
+  outline: none; flex: 1; min-width: 180px;
+}
+.act-search:focus { border-color: var(--purple); }
+
+.act-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.act-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.2rem;
+  transition: all 0.25s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.act-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 20px 20px 0 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.act-card:hover { border-color: rgba(139,92,246,0.4); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,92,246,0.1); }
+.act-card:hover::before { opacity: 1; }
+.act-card-type-pdf::before { background: linear-gradient(90deg, #ef4444, #f97316); }
+.act-card-type-word::before { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.act-card-type-excel::before { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.act-card-type-image::before { background: linear-gradient(90deg, #7c3aed, #ec4899); }
+.act-card-type-link::before { background: linear-gradient(90deg, #0891b2, #38bdf8); }
+
+.act-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 0.8rem; }
+.act-type-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.type-pdf { background: rgba(239,68,68,0.12); color: #ef4444; }
+.type-word { background: rgba(37,99,235,0.12); color: #3b82f6; }
+.type-excel { background: rgba(22,163,74,0.12); color: #22c55e; }
+.type-image { background: rgba(124,58,237,0.12); color: #a78bfa; }
+.type-link { background: rgba(8,145,178,0.12); color: #38bdf8; }
+
+.act-card-title { font-size: 0.92rem; font-weight: 700; line-height: 1.3; }
+.act-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 0.5rem 0; }
+.act-badge {
+  font-size: 0.62rem; font-weight: 700; padding: 2px 8px; border-radius: 40px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.badge-pdf { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+.badge-word { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+.badge-excel { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+.badge-image { background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2); }
+.badge-link { background: rgba(56,189,248,0.1); color: #38bdf8; border: 1px solid rgba(56,189,248,0.2); }
+.badge-lang { background: rgba(37,211,102,0.1); color: var(--green); border: 1px solid rgba(37,211,102,0.2); }
+.badge-level-init { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+.badge-level-inter { background: rgba(251,191,36,0.1); color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
+.badge-level-adv { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+
+.act-card-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 0.8rem; }
+.act-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.act-card-date { font-size: 0.65rem; color: var(--border); }
+.act-card-btns { display: flex; gap: 6px; }
+.act-mini-btn {
+  font-size: 0.7rem; padding: 5px 12px; border-radius: 40px;
+  font-family: 'Syne', sans-serif; font-weight: 700;
+  cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 4px;
+  border: none;
+}
+.act-mini-btn-view { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+.act-mini-btn-view:hover { background: rgba(139,92,246,0.3); }
+.act-mini-btn-down { background: rgba(37,211,102,0.1); color: var(--green); border: 1px solid rgba(37,211,102,0.25); }
+.act-mini-btn-down:hover { background: rgba(37,211,102,0.2); }
+
+/* Upload de atividades */
+.upload-zone-act {
+  border: 2px dashed rgba(139,92,246,0.3);
+  border-radius: 20px; padding: 2rem; text-align: center;
+  cursor: pointer; transition: all 0.2s; position: relative;
+  background: rgba(124,58,237,0.03);
+}
+.upload-zone-act:hover { border-color: rgba(139,92,246,0.6); background: rgba(124,58,237,0.06); }
+.upload-zone-act.drag-over { border-color: var(--purple); background: rgba(124,58,237,0.1); }
+.upload-zone-icon { font-size: 3rem; margin-bottom: 0.8rem; }
+.upload-zone-act h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; color: #a78bfa; }
+.upload-zone-act p { font-size: 0.78rem; color: var(--text-muted); }
+.upload-formats { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 0.8rem; }
+.fmt-chip {
+  font-size: 0.65rem; font-weight: 700; padding: 3px 10px; border-radius: 40px;
+  text-transform: uppercase;
+}
+.fmt-pdf { background: rgba(239,68,68,0.15); color: #f87171; }
+.fmt-word { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.fmt-excel { background: rgba(34,197,94,0.15); color: #4ade80; }
+.fmt-image { background: rgba(168,85,247,0.15); color: #c084fc; }
+
+/* Modal visualização */
+.view-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+  backdrop-filter: blur(12px); z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  visibility: hidden; opacity: 0; transition: 0.25s;
+}
+.view-modal-overlay.open { visibility: visible; opacity: 1; }
+.view-modal-box {
+  background: var(--surface); border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 28px; padding: 1.5rem;
+  max-width: 900px; width: 96%; max-height: 90vh;
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.view-modal-header { display: flex; justify-content: space-between; align-items: center; }
+.view-modal-body { flex: 1; overflow: auto; border-radius: 16px; background: var(--bg); padding: 1rem; min-height: 300px; }
+.view-modal-img { max-width: 100%; border-radius: 12px; display: block; margin: auto; }
+.view-modal-pdf { width: 100%; height: 60vh; border: none; border-radius: 12px; }
+.no-preview {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 200px; gap: 1rem; color: var(--text-muted);
+}
+.no-preview i { font-size: 3rem; color: var(--border); }
+
+/* Formulário de upload */
+.upload-form-card {
+  background: var(--surface); border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 20px; padding: 1.4rem;
+}
+.upload-form-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+.upload-form-card h3 i { color: #a78bfa; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+@media(max-width:560px) { .form-row { grid-template-columns: 1fr; } }
+.form-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none; width: 100%; }
+.form-select:focus { border-color: var(--purple); }
+.form-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px; color: var(--text); font-size: 0.85rem; outline: none; width: 100%; }
+.form-input:focus { border-color: var(--purple); }
+.form-textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; color: var(--text); font-size: 0.82rem; outline: none; width: 100%; min-height: 80px; resize: vertical; font-family: 'Syne', sans-serif; }
+.form-textarea:focus { border-color: var(--purple); }
+
+.act-stats-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.8rem; margin-bottom: 1.2rem;
+}
+.act-stat-card {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 0.8rem; text-align: center;
+}
+.act-stat-num { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+.act-stat-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+/* Image gallery for images in activity */
+.img-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.6rem; }
+.img-gallery-item {
+  border-radius: 12px; overflow: hidden; aspect-ratio: 4/3;
+  cursor: pointer; transition: transform 0.15s;
+  background: var(--surface2); border: 1px solid var(--border);
+}
+.img-gallery-item:hover { transform: scale(1.02); }
+.img-gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+
+@media(max-width:640px) {
+  .tab-btn { font-size: 0.7rem; padding: 5px 10px; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .chat-wrap { border-radius: 12px; height: calc(100dvh - 220px); min-height: 300px; }
+  .tab-content { padding: 0.8rem 0.5rem; }
+  .emoji-strip { display: none; }
+  .bubble { max-width: 88%; }
+  .chat-header-bar { font-size: 0.85rem; padding: 10px 14px; }
+  .icon-btn { width: 40px; height: 40px; min-width: 40px; }
+  .btn-green { padding: 9px 14px; }
+  .hero-title { font-size: 1.7rem; }
+  .act-grid { grid-template-columns: 1fr; }
+  .hero-logo-row { gap: 10px; }
+}
+
+/* ==================== AUTH MODAL ==================== */
+.auth-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(16px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.auth-box {
+  background: var(--surface);
+  border: 1px solid rgba(37,211,102,0.3);
+  border-radius: 28px;
+  padding: 2rem;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 0 60px rgba(37,211,102,0.12);
+  animation: fadeUp 0.3s ease;
+}
+.auth-logo {
+  text-align: center; margin-bottom: 1.5rem;
+}
+.auth-logo-icon {
+  width: 64px; height: 64px;
+  background: linear-gradient(135deg, var(--dark-green), var(--light-green));
+  border-radius: 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 0 30px rgba(37,211,102,0.3);
+  margin-bottom: .8rem;
+}
+.auth-logo h2 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.3rem; font-weight: 900;
+  color: var(--green);
+}
+.auth-logo p { font-size: .78rem; color: var(--text-muted); margin-top: 4px; }
+.auth-tabs {
+  display: flex; gap: 0; margin-bottom: 1.5rem;
+  background: var(--bg); border-radius: 14px; padding: 4px;
+}
+.auth-tab-btn {
+  flex: 1; padding: 8px 0;
+  border: none; background: transparent;
+  border-radius: 10px;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: .83rem;
+  color: var(--text-muted); cursor: pointer; transition: all .2s;
+}
+.auth-tab-btn.active {
+  background: var(--dark-green); color: white;
+}
+.auth-input {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 11px 16px; color: var(--text);
+  font-family: 'Syne', sans-serif; font-size: .88rem;
+  outline: none; margin-bottom: .8rem; transition: border-color .2s;
+}
+.auth-input:focus { border-color: var(--green); }
+.auth-btn {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, var(--dark-green), var(--light-green));
+  border: none; border-radius: 14px; color: white;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: .95rem;
+  cursor: pointer; transition: .2s; margin-top: .4rem;
+}
+.auth-btn:hover { filter: brightness(1.1); transform: scale(0.98); }
+.auth-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.auth-msg {
+  font-size: .78rem; text-align: center; margin-top: .8rem;
+  border-radius: 10px; padding: .6rem 1rem;
+}
+.auth-msg.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+.auth-msg.success { background: rgba(37,211,102,.1); border: 1px solid rgba(37,211,102,.3); color: var(--green); }
+.auth-msg.info { background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.3); color: #93c5fd; }
+
+/* Top bar do usuário logado */
+.user-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 1rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.user-bar-name {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .8rem; font-weight: 700; color: var(--green);
+}
+.user-bar-avatar {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--dark-green), var(--green));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800; color: white;
+}
+.user-bar-email { font-size: .68rem; color: var(--text-muted); }
+.user-bar-right { display: flex; align-items: center; gap: 8px; }
+.verify-badge {
+  font-size: .65rem; padding: 3px 8px; border-radius: 40px; font-weight: 700;
+  background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.3); color: #fde68a;
+}
+.verify-badge.ok { background: rgba(37,211,102,.1); border-color: rgba(37,211,102,.3); color: var(--green); }
+.logout-btn {
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+  color: #f87171; border-radius: 40px; padding: 4px 12px;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: .72rem;
+  cursor: pointer; transition: .15s;
+}
+.logout-btn:hover { background: rgba(239,68,68,.2); }
+.chat-user-badge {
+  background: rgba(37,211,102,.12); border: 1px solid rgba(37,211,102,.25);
+  border-radius: 10px; padding: 6px 12px; margin-bottom: 8px;
+  font-size: .78rem; color: var(--green); font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* ==================== WHATSAPP CHAT ==================== */
+.wa-shell {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  height: 82vh; height: 82dvh; min-height: 500px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+}
+/* SIDEBAR */
+.wa-sidebar {
+  background: #111827;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.wa-sidebar-header {
+  background: #075E54;
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.wa-my-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--light-green);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .95rem; color: white;
+  cursor: pointer; transition: opacity .2s; flex-shrink: 0;
+  overflow: hidden;
+}
+.wa-my-avatar:hover { opacity: .8; }
+.wa-sidebar-title { flex: 1; font-weight: 700; font-size: .9rem; color: white; }
+.wa-sidebar-actions { display: flex; gap: 4px; }
+.wa-icon-btn {
+  background: none; border: none;
+  color: rgba(255,255,255,.8);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: .95rem; transition: .15s;
+  flex-shrink: 0;
+}
+.wa-icon-btn:hover { background: rgba(255,255,255,.15); color: white; }
+.wa-search-box { padding: 8px 10px; background: #1f2937; flex-shrink: 0; }
+.wa-search-input {
+  width: 100%; background: #374151;
+  border: none; border-radius: 20px;
+  padding: 7px 14px; color: var(--text);
+  font-family: 'Syne',sans-serif; font-size: .83rem; outline: none;
+}
+.wa-search-input::placeholder { color: var(--text-muted); }
+.wa-convo-list { flex: 1; overflow-y: auto; }
+.wa-convo-list::-webkit-scrollbar { width: 4px; }
+.wa-convo-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.wa-section-label {
+  padding: 6px 14px;
+  font-size: .7rem; font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px;
+  background: rgba(0,0,0,.2);
+  display: flex; align-items: center; gap: 6px;
+}
+.wa-convo-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer; transition: background .15s;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.wa-convo-item:hover { background: rgba(255,255,255,.05); }
+.wa-convo-item.active { background: rgba(37,211,102,.1); border-left: 3px solid var(--green); }
+.wa-convo-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--dark-green);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 800; color: white;
+  flex-shrink: 0; overflow: hidden;
+}
+.group-av { background: #128C7E; font-size: 1.2rem; }
+.wa-convo-info { flex: 1; min-width: 0; }
+.wa-convo-name { font-size: .88rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-convo-last { font-size: .75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.wa-convo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.wa-convo-time { font-size: .65rem; color: var(--text-muted); }
+.wa-unread-badge {
+  background: var(--green); color: #000;
+  border-radius: 40px; min-width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-weight: 800; padding: 0 5px;
+}
+/* MAIN CHAT */
+.wa-main {
+  display: flex; flex-direction: column;
+  background: #0e1a14;
+  background-image: radial-gradient(rgba(37,211,102,.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+.wa-chat-header {
+  background: #1f2937;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.wa-back-btn {
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 1rem; padding: 4px;
+  display: none;
+}
+.wa-chat-header-av {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #075E54;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: white; font-weight: 800; flex-shrink: 0;
+}
+.wa-chat-header-info { flex: 1; min-width: 0; }
+.wa-chat-header-name { font-weight: 700; font-size: .95rem; color: var(--text); }
+.wa-chat-header-sub { font-size: .72rem; color: var(--green); margin-top: 1px; }
+.wa-chat-header-actions { display: flex; gap: 4px; }
+/* Mensagens */
+.wa-msgs-area {
+  flex: 1; overflow-y: auto; padding: .8rem;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.wa-msgs-area::-webkit-scrollbar { width: 4px; }
+.wa-msgs-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.wa-date-sep {
+  text-align: center; margin: .5rem 0;
+}
+.wa-date-sep span {
+  background: rgba(0,0,0,.4); color: var(--text-muted);
+  font-size: .68rem; padding: 3px 10px; border-radius: 40px;
+}
+.wa-msg-row {
+  display: flex; align-items: flex-end; gap: 6px;
+  max-width: 78%;
+}
+.wa-msg-me { align-self: flex-end; flex-direction: row-reverse; }
+.wa-msg-other { align-self: flex-start; }
+.wa-msg-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #075E54;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-weight: 800; color: white; flex-shrink: 0;
+  overflow: hidden;
+}
+.wa-bubble {
+  padding: 7px 10px; border-radius: 12px;
+  font-size: .87rem; word-wrap: break-word; line-height: 1.5;
+  max-width: 100%;
+}
+.wa-bubble-me {
+  background: #1a4731; border: 1px solid rgba(37,211,102,.2);
+  border-bottom-right-radius: 3px;
+}
+.wa-bubble-other {
+  background: #1f2937; border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+}
+.wa-bubble-name { font-size: .7rem; font-weight: 700; margin-bottom: 2px; }
+.wa-bubble-text { color: var(--text); }
+.wa-bubble-time { font-size: .58rem; color: var(--text-muted); margin-top: 4px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 3px; }
+/* Input bar */
+.wa-emoji-panel {
+  background: #1f2937; border-top: 1px solid var(--border);
+  padding: .5rem; flex-shrink: 0;
+}
+.wa-emoji-grid { display: flex; flex-wrap: wrap; gap: 2px; max-height: 120px; overflow-y: auto; }
+.wa-emoji-btn { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 3px; border-radius: 6px; transition: background .1s; }
+.wa-emoji-btn:hover { background: rgba(255,255,255,.1); }
+.wa-input-bar {
+  background: #1f2937; border-top: 1px solid var(--border);
+  padding: 8px 10px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.wa-input-wrap { flex: 1; min-width: 0; }
+.wa-input {
+  width: 100%; background: #374151;
+  border: 1px solid transparent; border-radius: 20px;
+  padding: 8px 14px; color: var(--text);
+  font-family: 'Syne',sans-serif; font-size: .88rem;
+  outline: none; resize: none; line-height: 1.4;
+  max-height: 120px; overflow-y: auto;
+}
+.wa-input:focus { border-color: rgba(37,211,102,.3); }
+.wa-input::placeholder { color: var(--text-muted); }
+.wa-send-btn {
+  background: var(--dark-green); border: none; color: white;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: .15s; font-size: .95rem; flex-shrink: 0;
+}
+.wa-send-btn:hover { background: var(--light-green); }
+/* Perfil panel */
+.wa-profile-panel {
+  position: absolute; inset: 0; background: rgba(0,0,0,.85);
+  backdrop-filter: blur(8px); z-index: 100;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+}
+.wa-profile-inner {
+  background: #1f2937; width: 340px; height: 100%;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.wa-profile-header {
+  background: #075E54; padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+  color: white;
+}
+.wa-profile-header h3 { font-size: .95rem; }
+.wa-profile-avatar-wrap {
+  position: relative;
+  display: flex; justify-content: center;
+  padding: 2rem 0 1rem;
+  background: linear-gradient(to bottom, #075E54, transparent);
+}
+.wa-profile-big-avatar {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: var(--light-green);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; font-weight: 800; color: white;
+  overflow: hidden;
+}
+.wa-avatar-change-btn {
+  position: absolute; bottom: 1rem; right: calc(50% - 60px);
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--green); color: white;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: .85rem;
+}
+.wa-profile-body { padding: 1rem; }
+.wa-profile-section { margin-bottom: 1.2rem; }
+.wa-profile-label { font-size: .72rem; color: var(--green); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: .4rem; }
+.wa-profile-edit-row { display: flex; gap: 8px; align-items: center; }
+.wa-profile-input {
+  flex: 1; background: #374151; border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 12px; color: var(--text);
+  font-family: 'Syne',sans-serif; font-size: .85rem; outline: none;
+  width: 100%;
+}
+.wa-profile-input:focus { border-color: var(--green); }
+.wa-save-btn {
+  background: var(--dark-green); border: none; color: white;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: .15s;
+}
+.wa-save-btn:hover { background: var(--light-green); }
+.wa-profile-email { font-size: .85rem; color: var(--text-muted); padding: 4px 0; }
+/* Modais */
+.wa-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.85);
+  backdrop-filter: blur(8px); z-index: 500;
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.wa-modal-box {
+  background: #1f2937; border: 1px solid var(--border);
+  border-radius: 20px; padding: 1.4rem;
+  width: 100%; max-width: 400px;
+}
+.wa-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.2rem; color: var(--text);
+}
+.wa-modal-header h3 { font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+.wa-settings-section { margin-bottom: 1.2rem; }
+.wa-settings-label { font-size: .75rem; color: var(--green); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: .5rem; }
+.wa-settings-feedback { font-size: .78rem; margin-top: .3rem; min-height: 1.2rem; }
+/* Responsive */
+@media(max-width: 680px) {
+  .wa-shell { grid-template-columns: 1fr; }
+  .wa-main { display: none; }
+  .wa-shell.wa-chat-open .wa-sidebar { display: none; }
+  .wa-shell.wa-chat-open .wa-main { display: flex; }
+  .wa-back-btn { display: flex !important; }
+  .wa-profile-inner { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== MODAL DE LOGIN/REGISTRO ==================== -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">💻</div>
+      <h2>DEVS CODE LAB</h2>
+      <p>Entre para acessar o chat e salvar seus dados</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab-btn active" id="tabLoginBtn" onclick="showAuthTab('login')">Entrar</button>
+      <button class="auth-tab-btn" id="tabRegBtn" onclick="showAuthTab('register')">Criar conta</button>
+    </div>
+
+    <!-- Login -->
+    <div id="authLogin">
+      <input class="auth-input" id="loginEmail" type="email" placeholder="E-mail">
+      <input class="auth-input" id="loginPassword" type="password" placeholder="Senha">
+      <button class="auth-btn" id="loginBtn">
+        <i class="fas fa-sign-in-alt"></i> Entrar
+      </button>
+    </div>
+
+    <!-- Registro -->
+    <div id="authRegister" style="display:none">
+      <input class="auth-input" id="regName" placeholder="Seu nome completo">
+      <input class="auth-input" id="regEmail" type="email" placeholder="E-mail">
+      <input class="auth-input" id="regPassword" type="password" placeholder="Senha (mínimo 6 caracteres)">
+      <input class="auth-input" id="regPassword2" type="password" placeholder="Confirme a senha">
+      <button class="auth-btn" id="registerBtn">
+        <i class="fas fa-user-plus"></i> Criar conta
+      </button>
+    </div>
+
+    <div id="authMsg" style="display:none" class="auth-msg"></div>
+  </div>
+</div>
+
+<!-- ==================== BARRA DO USUÁRIO LOGADO ==================== -->
+<div id="userBar" class="user-bar" style="display:none">
+  <div class="user-bar-name">
+    <div class="user-bar-avatar" id="userAvatar">?</div>
+    <div>
+      <div id="userDisplayName">—</div>
+      <div class="user-bar-email" id="userEmail">—</div>
+    </div>
+  </div>
+  <div class="user-bar-right">
+    <span class="verify-badge" id="verifyBadge">📧 Verifique o e-mail</span>
+    <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+  </div>
+</div>
+
+<!-- ==================== HERO REDESIGNADO ==================== -->
+<div class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-inner">
+    <div class="hero-logo-row">
+      <div class="hero-logo-icon">💻</div>
+      <div class="hero-title-block">
+        <div class="hero-subtitle-tag">DEVS CODE LAB · Laboratório Digital</div>
+        <h1 class="hero-title">
+          <span class="ficr">DEVS </span><span class="code">CODE</span><span class="lab"> LAB</span>
+        </h1>
+      </div>
+    </div>
+    <p class="hero-desc">
+      Seu estúdio interativo de programação — explore linguagens, pratique com quizzes,
+      analise código com IA, conecte-se com colegas e acesse materiais de estudo.
+    </p>
+    <div class="hero-badges">
+      <span class="hero-badge"><i class="fas fa-code"></i> 8 Linguagens</span>
+      <span class="hero-badge"><i class="fas fa-brain"></i> Quiz Interativo</span>
+      <span class="hero-badge"><i class="fas fa-robot"></i> IA CodePrompt</span>
+      <span class="hero-badge"><i class="fas fa-graduation-cap"></i> Atividades</span>
+      <span class="hero-badge"><i class="fas fa-comments"></i> Chat ao Vivo</span>
+    </div>
+  </div>
+  <div class="hero-scan-line"></div>
+</div>
+
+<div class="tabs-nav" id="tabsNav"></div>
+<main id="mainContent"></main>
+
+<!-- Quiz Modal -->
+<div class="modal-overlay" id="quizModal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h2 id="quizModalTitle"><i class="fas fa-brain"></i> Quiz</h2>
+      <button class="btn btn-outline" onclick="document.getElementById('quizModal').classList.remove('open')">✕ Fechar</button>
+    </div>
+    <div id="quizModalBody"></div>
+    <div id="quizModalResult"></div>
+    <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
+      <button class="btn btn-green" id="quizSubmitBtn"><i class="fas fa-check"></i> Corrigir</button>
+      <button class="btn btn-outline" id="quizResetBtn"><i class="fas fa-redo"></i> Tentar novamente</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Modal para Atividades -->
+<div class="view-modal-overlay" id="viewModal">
+  <div class="view-modal-box">
+    <div class="view-modal-header">
+      <h3 id="viewModalTitle" style="font-size:1rem;font-weight:700"></h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-purple" id="viewModalDownload" style="font-size:0.72rem;padding:6px 14px"><i class="fas fa-download"></i> Baixar</button>
+        <button class="btn btn-outline" onclick="document.getElementById('viewModal').classList.remove('open')" style="font-size:0.72rem;padding:6px 14px">✕ Fechar</button>
+      </div>
+    </div>
+    <div class="view-modal-body" id="viewModalBody"></div>
+  </div>
+</div>
+
+<footer><i class="fas fa-code"></i> Devs Code Lab — Aprenda, pratique e conecte-se!</footer>
+
+<script>
+// ============================================================
+// DATA — LINGUAGENS COM HISTÓRIA COMPLETA + CURIOSIDADES
+// ============================================================
+const LANGS = [
+  { id:"html", name:"HTML", icon:"fab fa-html5",
+    desc:"Linguagem de marcação para estruturar páginas web.",
+    aplicacoes:"Sites, e-mails, aplicações híbridas, PWAs.",
+    historia:"📜 Tim Berners-Lee (1991). HTML5 em 2014 trouxe semântica, canvas, vídeo nativo e APIs modernas.",
+    historiaCompleta:`<strong>HTML (HyperText Markup Language)</strong> foi criado por <strong>Tim Berners-Lee</strong> em <strong>1991</strong> no CERN, laboratório europeu de física de partículas, como uma forma de compartilhar documentos científicos entre pesquisadores. A ideia central era usar "hiperlinks" para conectar documentos, criando assim a World Wide Web.<br><br>
+    A evolução foi gradual: HTML 2.0 (1995) padronizou a linguagem; HTML 3.2 (1997) trouxe tabelas e scripts; HTML 4.01 (1999) introduziu CSS e acessibilidade. A grande revolução veio com o <strong>HTML5 em 2014</strong>, que eliminou a necessidade de plugins externos (como Flash), trazendo elementos semânticos como &lt;header&gt;, &lt;article&gt;, &lt;section&gt;, além de APIs para geolocalização, canvas 2D/3D, áudio e vídeo nativo, Web Workers e muito mais.`,
+    curiosidades:[
+      {k:"1ª página web", v:"O primeiro site da história existe até hoje em info.cern.ch — sem CSS, só texto e links."},
+      {k:"94% da web", v:"Praticamente todos os sites do mundo usam HTML como base estrutural."},
+      {k:"Não é linguagem de programação", v:"HTML é uma linguagem de marcação, não possui lógica ou controle de fluxo como if/else."},
+      {k:"HTML5 e Web Components", v:"Com Custom Elements e Shadow DOM, é possível criar tags HTML totalmente novas e reutilizáveis."},
+    ],
+    codigo:'<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <title>FICR CodeLab</title>\n</head>\n<body>\n  <h1>Olá, mundo!</h1>\n  <p>Aprendizado interativo</p>\n  <ul>\n    <li>HTML</li>\n    <li>CSS</li>\n    <li>JavaScript</li>\n  </ul>\n</body>\n</html>',
+    output:`[BROWSER RENDER]\n──────────────────────\nOlá, mundo!          ← <h1> grande e negrito\nAprendizado interativo ← <p> parágrafo normal\n\n• HTML               ← <li> item de lista\n• CSS\n• JavaScript\n──────────────────────`,
+    fatos:["94% dos sites usam HTML5","SEO semântico melhorado","Web Components","Canvas 2D/WebGL","Shadow DOM"],
+    quiz:[
+      {p:"Qual tag define um parágrafo?",opts:["&lt;p&gt;","&lt;para&gt;","&lt;text&gt;","&lt;paragraph&gt;"],c:0},
+      {p:"Qual versão introduziu &lt;article&gt; e &lt;section&gt;?",opts:["HTML 4.01","XHTML 1.0","HTML5","HTML 3.2"],c:2},
+      {p:"Qual atributo define o caminho de uma imagem?",opts:["href","src","link","path"],c:1},
+      {p:"Para lista ordenada usamos:",opts:["&lt;ul&gt;","&lt;ol&gt;","&lt;li&gt;","&lt;list&gt;"],c:1},
+      {p:"Qual elemento representa o rodapé semântico?",opts:["&lt;bottom&gt;","&lt;footer&gt;","&lt;foot&gt;","&lt;section&gt;"],c:1},
+      {p:"Qual atributo torna um campo obrigatório?",opts:["mandatory","must","required","validate"],c:2},
+      {p:"A tag &lt;canvas&gt; serve para:",opts:["Exibir vídeos","Desenhar gráficos via JS","Criar tabelas","Inserir áudio"],c:1},
+      {p:"Qual meta tag é essencial para responsividade?",opts:["charset","viewport","robots","description"],c:1},
+      {p:"O atributo 'alt' em &lt;img&gt; serve para:",opts:["Alterar cor","Acessibilidade/SEO","Definir tamanho","Animação"],c:1},
+      {p:"&lt;thead&gt; e &lt;tbody&gt; são usados em:",opts:["Formulários","Listas","Tabelas","Seções semânticas"],c:2}
+    ]
+  },
+  { id:"css", name:"CSS", icon:"fab fa-css3-alt",
+    desc:"Folhas de estilo em cascata para design responsivo e moderno.",
+    aplicacoes:"Layouts, animações, temas, design systems.",
+    historia:"📜 Håkon Wium Lie (1994). CSS3 trouxe flexbox, grid, variáveis CSS, animações nativas.",
+    historiaCompleta:`<strong>CSS (Cascading Style Sheets)</strong> foi proposto por <strong>Håkon Wium Lie</strong> em <strong>1994</strong>, também no CERN, como solução para separar a estrutura (HTML) da apresentação visual. Antes do CSS, a estilização era feita com atributos inline no próprio HTML — um caos de manutenção.<br><br>
+    O CSS 1 foi lançado em 1996; CSS 2 em 1998 adicionou posicionamento e media types. A revolução veio com o <strong>CSS3</strong> (a partir de 2011), que trouxe módulos independentes: Flexbox para layouts unidimensionais, CSS Grid para layouts bidimensionais, Custom Properties (variáveis), Animations e Transitions nativas, Media Queries para responsividade, e muito mais. Hoje, CSS está mais poderoso do que nunca com Container Queries, Subgrid e a função :has().`,
+    curiosidades:[
+      {k:"Cascata significa prioridade", v:"CSS aplica regras em cascata: inline > id > classe > elemento — quem tem mais especificidade vence."},
+      {k:"Flexbox foi proposto em 2009", v:"Mas só se tornou estável e amplamente suportado por volta de 2015."},
+      {k:"CSS pode criar arte", v:"Existem artistas que criam ilustrações complexas usando APENAS CSS, sem uma única imagem."},
+      {k:"Var() mudou tudo", v:"Variáveis CSS nativas (--cor-primaria) eliminaram a dependência de pré-processadores como SASS para casos simples."},
+    ],
+    codigo:'/* Card animado */\n.card {\n  background: linear-gradient(135deg, #1a2a3f, #0b1120);\n  border-radius: 20px;\n  border: 1px solid #25D366;\n  padding: 1.5rem;\n  transition: transform 0.3s, box-shadow 0.3s;\n}\n.card:hover {\n  transform: translateY(-4px);\n  box-shadow: 0 12px 40px rgba(37,211,102,0.2);\n}',
+    output:`[RESULTADO VISUAL]\n──────────────────────\n┌──────────────────────┐\n│  Card com borda verde │  ← border: 1px solid #25D366\n│  Fundo gradiente azul │  ← linear-gradient(135deg,...)\n│  Cantos arredondados  │  ← border-radius: 20px\n└──────────────────────┘\n  ↓ ao passar o mouse (hover):\n  Card sobe 4px + sombra verde aparece`,
+    fatos:["CSS Grid 2D layouts","Flexbox unidimensional","Custom Properties (variáveis)","@media queries responsivas","Animations & Keyframes"],
+    quiz:[
+      {p:"Qual propriedade define cor de fundo?",opts:["background-color","color","bg","fill"],c:0},
+      {p:"Qual unidade é relativa ao viewport?",opts:["px","em","vw/vh","rem"],c:2},
+      {p:"Como selecionar classe 'box'?",opts:[".box","#box","box","[box]"],c:0},
+      {p:"Flexbox é layout de quantas dimensões?",opts:["Duas","Uma","Três","Nenhuma"],c:1},
+      {p:"Qual propriedade arredonda bordas?",opts:["border-round","border-radius","corner","round"],c:1},
+      {p:"Para centralizar com Flexbox usamos:",opts:["align-self","justify-self","justify-content + align-items","margin auto"],c:2},
+      {p:"CSS Grid usa qual propriedade para colunas?",opts:["grid-areas","grid-template-columns","columns","flex-wrap"],c:1},
+      {p:"Qual pseudo-classe aplica estilo ao hover?",opts:[":focus",":active",":hover",":visited"],c:2},
+      {p:"O que faz 'position: sticky'?",opts:["Fixo sempre","Relativo ao pai","Cola durante scroll","Absoluto"],c:2},
+      {p:"Variáveis CSS são declaradas com:",opts:["$var","var()","--nome: valor","@variable"],c:2}
+    ]
+  },
+  { id:"js", name:"JavaScript", icon:"fab fa-js",
+    desc:"Linguagem dinâmica e versátil para interatividade web e backend.",
+    aplicacoes:"Frontend, Node.js, apps mobile (React Native), IA.",
+    historia:"📜 Brendan Eich criou em 10 dias (1995). ES6+ modernizou com promises, classes, módulos.",
+    historiaCompleta:`<strong>JavaScript</strong> foi criado por <strong>Brendan Eich</strong> na Netscape em apenas <strong>10 dias</strong> em 1995 — originalmente chamado de Mocha, depois LiveScript, e finalmente JavaScript (um marketing oportunista para aproveitar a popularidade do Java). As duas linguagens não têm relação.<br><br>
+    Por anos, JS foi visto como uma linguagem "de segunda classe", usada apenas para validações simples de formulário. A virada veio em 2009 com o <strong>Node.js</strong> (Ryan Dahl), que levou JavaScript ao lado do servidor. Em 2015, o <strong>ES6 (ECMAScript 2015)</strong> modernizou completamente a linguagem: arrow functions, classes, promises, módulos, destructuring, let/const. Hoje o ecossistema JavaScript é o maior do mundo, com mais de <strong>2 milhões de pacotes no NPM</strong>. React, Vue, Angular dominam o frontend; Next.js e Deno expandem as possibilidades.`,
+    curiosidades:[
+      {k:"Criado em 10 dias", v:"Brendan Eich criou o JavaScript em menos de duas semanas, em maio de 1995."},
+      {k:"Não tem relação com Java", v:"O nome foi estratégia de marketing da Netscape — as linguagens são totalmente diferentes."},
+      {k:"Linguagem mais popular do mundo", v:"Por mais de 10 anos consecutivos, JS lidera o ranking do Stack Overflow Survey."},
+      {k:"typeof null === 'object'", v:"Um famoso bug da primeira versão que nunca foi corrigido por questões de compatibilidade retroativa."},
+    ],
+    codigo:'// Arrow function + async/await\nconst buscarAlunos = async () => {\n  const alunos = ["Ana", "Bruno", "Carla"];\n  const aprovados = alunos.filter((_, i) => i < 2);\n  \n  aprovados.forEach(nome => {\n    console.log(`✅ ${nome} aprovado(a)!`);\n  });\n  \n  return aprovados.length;\n};\n\nbuscarAlunos().then(n => console.log(`Total: ${n}`));',
+    output:`✅ Ana aprovado(a)!\n✅ Bruno aprovado(a)!\nTotal: 2`,
+    fatos:["NPM: 2M+ pacotes","Async/Await nativo","TypeScript superset","Node.js backend","WebAssembly suporte"],
+    quiz:[
+      {p:"Qual método exibe no console?",opts:["console.print","console.log","print()","log()"],c:1},
+      {p:"Como declarar constante?",opts:["let","var","const","fix"],c:2},
+      {p:"'typeof null' retorna:",opts:["null","object","undefined","string"],c:1},
+      {p:"Como criar uma Promise?",opts:["new Promise()","Promise.create()","async()","promise()"],c:0},
+      {p:"Para acessar o DOM usamos:",opts:["window.dom","html.document","document","dom"],c:2},
+      {p:"Spread operator é representado por:",opts:["..","...","->","=>"],c:1},
+      {p:"Arrow function é escrita como:",opts:["function=>{}","()=>{}","->(){}","func(){}"],c:1},
+      {p:"'===' verifica:",opts:["Só valor","Valor e tipo","Só tipo","Referência"],c:1},
+      {p:"Array.map() retorna:",opts:["Undefined","O mesmo array","Novo array transformado","Boolean"],c:2},
+      {p:"Para desestruturar objeto usamos:",opts:["{a, b} = obj","[a,b] = obj","obj.get(a,b)","destructure(obj)"],c:0}
+    ]
+  },
+  { id:"python", name:"Python", icon:"fab fa-python",
+    desc:"Versátil, legível, ideal para dados, IA e automação.",
+    aplicacoes:"Machine Learning, web (Django/Flask), scripts, automação.",
+    historia:"📜 Guido van Rossum (1991). Python 3 consolidou data science e IA moderna.",
+    historiaCompleta:`<strong>Python</strong> foi criado por <strong>Guido van Rossum</strong> no Natal de 1989, nos Países Baixos, como um projeto de hobby. O nome veio do grupo humorístico britânico <strong>Monty Python</strong>. A primeira versão pública foi lançada em <strong>1991</strong>, com foco em legibilidade e simplicidade — o famoso "código que se lê como inglês".<br><br>
+    Por décadas, Python foi popular em scripts e ensino. A explosão veio com a era do <strong>Big Data e Machine Learning</strong> nos anos 2010: TensorFlow (Google), PyTorch (Meta), Pandas, NumPy e Scikit-learn transformaram Python na linguagem número 1 para Ciência de Dados e IA. Em 2024, Python finalmente ultrapassou JavaScript no ranking TIOBE, tornando-se a <strong>linguagem mais popular do mundo</strong>. O guia de estilo PEP 8 e a filosofia "The Zen of Python" tornam o código mais uniforme entre projetos.`,
+    curiosidades:[
+      {k:"O Zen do Python", v:"'import this' no console Python exibe 19 princípios filosóficos, como 'Bonito é melhor que feio'."},
+      {k:"Indentação obrigatória", v:"Diferente de outras linguagens, Python usa a indentação (espaços) como parte da sintaxe — não é opcional."},
+      {k:"GIL — Global Interpreter Lock", v:"Um mutex que impede múltiplas threads de executar bytecode simultaneamente — tema polêmico na comunidade."},
+      {k:"Mais popular em IA", v:"Virtualmente todos os frameworks de IA e ML têm Python como linguagem principal ou única."},
+    ],
+    codigo:'# List comprehension + f-string\nalunos = ["Ana", "Bruno", "Carla", "Diego"]\nnotas  = [8.5, 7.2, 9.1, 5.8]\n\nresultados = [\n  f"{nome}: {nota:.1f} ✅" if nota >= 7 else f"{nome}: {nota:.1f} ❌"\n  for nome, nota in zip(alunos, notas)\n]\n\nfor r in resultados:\n  print(r)\n\nprint(f"Aprovados: {sum(n>=7 for n in notas)}/{len(notas)}")',
+    output:`Ana: 8.5 ✅\nBruno: 7.2 ✅\nCarla: 9.1 ✅\nDiego: 5.8 ❌\nAprovados: 3/4`,
+    fatos:["Linguagem mais popular 2024","TensorFlow/PyTorch","Pandas + NumPy","Django/FastAPI","Raspberry Pi"],
+    quiz:[
+      {p:"Qual comando exibe saída?",opts:["print()","echo","console.log","write()"],c:0},
+      {p:"Como criar lista por compreensão?",opts:["[x for x in range(5)]","list(range(5))","{x:range(5)}","Array(5)"],c:0},
+      {p:"Biblioteca para DataFrames?",opts:["NumPy","Matplotlib","Pandas","SciPy"],c:2},
+      {p:"Qual palavra define função?",opts:["def","func","function","method"],c:0},
+      {p:"Indentação em Python é:",opts:["Opcional","Estética","Obrigatória","Configurável"],c:2},
+      {p:"Para herança de classe usamos:",opts:["extends","inherits","class Filho(Pai)","super()"],c:2},
+      {p:"O que é um decorator?",opts:["Comentário","Modificador de função com @","Tipo de variável","Módulo"],c:1},
+      {p:"'__init__' é:",opts:["Destrutor","Método privado","Construtor da classe","Importação"],c:2},
+      {p:"Para instalar pacotes usamos:",opts:["npm install","pip install","apt-get","brew install"],c:1},
+      {p:"Qual estrutura itera chave-valor?",opts:["list","tuple","dict","set"],c:2}
+    ]
+  },
+  { id:"java", name:"Java", icon:"fab fa-java",
+    desc:"Orientada a objetos, multiplataforma via JVM, robusta e segura.",
+    aplicacoes:"Android, sistemas corporativos, Spring Boot, microserviços.",
+    historia:"📜 James Gosling/Sun Microsystems (1995). 'Write once, run anywhere' revolucionou.",
+    historiaCompleta:`<strong>Java</strong> foi criado por <strong>James Gosling</strong> e sua equipe na Sun Microsystems, lançado oficialmente em <strong>1995</strong>. O projeto nasceu como "Oak" em 1991, inicialmente voltado para dispositivos embarcados. O slogan <strong>"Write Once, Run Anywhere"</strong> (WORA) resumiu a grande inovação: código Java compilado roda em qualquer plataforma que tenha uma JVM (Java Virtual Machine).<br><br>
+    Em 2010, a Oracle adquiriu a Sun Microsystems e passou a gerir o Java. A linguagem dominou o desenvolvimento <strong>Android</strong> por anos (até o Kotlin chegar em 2017) e continua essencial em grandes sistemas corporativos via <strong>Spring Framework</strong>. Java é notório pela verbosidade, mas também pela robustez, tipagem estática e ecossistema maduro. As versões modernas (Java 17, 21+) trouxeram Records, Pattern Matching e Virtual Threads (Project Loom).`,
+    curiosidades:[
+      {k:"3 bilhões de dispositivos", v:"O famoso slogan de instalação do Java: 'Java is installed on 3 billion devices'."},
+      {k:"Mais usado em bancos", v:"Grande parte dos sistemas bancários e corporativos do Brasil e do mundo rodam em Java."},
+      {k:"JVM é uma plataforma", v:"Kotlin, Scala, Groovy e Clojure também rodam na JVM — Java não é a única linguagem JVM."},
+      {k:"Garbage Collector automático", v:"Java gerencia a memória automaticamente, eliminando ponteiros manuais presentes em C/C++."},
+    ],
+    codigo:'public class FICR {\n  private String nome;\n  private double nota;\n  \n  public FICR(String nome, double nota) {\n    this.nome = nome;\n    this.nota = nota;\n  }\n  \n  public void exibirResultado() {\n    String status = nota >= 7.0 ? "✅ Aprovado" : "❌ Reprovado";\n    System.out.printf("%s: %.1f — %s%n", nome, nota, status);\n  }\n  \n  public static void main(String[] args) {\n    new FICR("Ana", 8.5).exibirResultado();\n    new FICR("Bruno", 5.2).exibirResultado();\n  }\n}',
+    output:`Ana: 8.5 — ✅ Aprovado\nBruno: 5.2 — ❌ Reprovado`,
+    fatos:["3 bilhões+ de dispositivos","Android SDK","Spring Framework","JVM multiplataforma","Tipagem estática forte"],
+    quiz:[
+      {p:"Ponto de entrada em Java?",opts:["start","main","run","init"],c:1},
+      {p:"Herança usa qual palavra?",opts:["inherit","extends","implements","super"],c:1},
+      {p:"JVM significa:",opts:["Java Virtual Machine","Java Variable Manager","Java View Model","Java Version Manager"],c:0},
+      {p:"Modificador apenas dentro da classe?",opts:["public","protected","private","default"],c:2},
+      {p:"Interface para lista dinâmica?",opts:["Array[]","LinkedList","ArrayList","Vector"],c:2},
+      {p:"Qual palavra cria objeto?",opts:["create","make","new","build"],c:2},
+      {p:"'@Override' é:",opts:["Variável","Anotação","Classe abstrata","Interface"],c:1},
+      {p:"Para tratar exceção usamos:",opts:["if/else","try/catch","switch","assert"],c:1},
+      {p:"'final' em variável significa:",opts:["Global","Estático","Constante (imutável)","Privado"],c:2},
+      {p:"Qual coleção não permite duplicatas?",opts:["ArrayList","LinkedList","HashMap","HashSet"],c:3}
+    ]
+  },
+  { id:"php", name:"PHP", icon:"fab fa-php",
+    desc:"Server-side scripting para web dinâmica e APIs.",
+    aplicacoes:"WordPress, Laravel, e-commerces, APIs REST.",
+    historia:"📜 Rasmus Lerdorf (1994). PHP 8+ trouxe JIT, tipos de união e fibers.",
+    historiaCompleta:`<strong>PHP</strong> (Personal Home Page, depois Hypertext Preprocessor) foi criado por <strong>Rasmus Lerdorf</strong> em <strong>1994</strong> como um conjunto de scripts Perl para rastrear visitas ao seu currículo online. Era longe de ser uma linguagem "projetada" — cresceu organicamente e de forma caótica, o que gerou inconsistências históricas.<br><br>
+    Apesar das críticas, PHP alimenta <strong>77% da web</strong>, principalmente pelo domínio do WordPress (43% de todos os sites). O framework <strong>Laravel</strong> (Taylor Otwell, 2011) modernizou completamente o desenvolvimento PHP com MVC elegante, Eloquent ORM e Artisan CLI. O <strong>PHP 8</strong> (2020) foi uma virada técnica: JIT Compiler, Named Arguments, Match expressions, Fibers (8.1) e muitas melhorias de tipagem tornaram a linguagem competitiva novamente.`,
+    curiosidades:[
+      {k:"77% da web usa PHP", v:"Mesmo sendo criticado, PHP continua dominando o backend de grande parte da internet global."},
+      {k:"WordPress = 43% dos sites", v:"A plataforma mais usada do mundo roda em PHP e impulsiona seu uso massivo."},
+      {k:"Erros históricos de nomenclatura", v:"Funções como array_push, str_replace e strlen não seguem nenhum padrão consistente de nomenclatura."},
+      {k:"PHP 8 e JIT", v:"O compilador Just-In-Time do PHP 8 pode melhorar a performance em até 3x em certas operações."},
+    ],
+    codigo:'<?php\n// API simples com PHP 8\nclass Aluno {\n  public function __construct(\n    private string $nome,\n    private float  $nota\n  ) {}\n  \n  public function getStatus(): string {\n    return $this->nota >= 7.0 ? "Aprovado ✅" : "Reprovado ❌";\n  }\n  \n  public function toArray(): array {\n    return [\n      "nome"   => $this->nome,\n      "nota"   => $this->nota,\n      "status" => $this->getStatus()\n    ];\n  }\n}\n\n$aluno = new Aluno("Ana Silva", 8.5);\necho json_encode($aluno->toArray(), JSON_PRETTY_PRINT);',
+    output:`{\n  "nome": "Ana Silva",\n  "nota": 8.5,\n  "status": "Aprovado ✅"\n}`,
+    fatos:["77% da web usa PHP","WordPress: 43% dos sites","Laravel Framework","PHP 8 JIT Compiler","Composer package manager"],
+    quiz:[
+      {p:"Como iniciar bloco PHP?",opts:["<script>","<?php","<php>","<%"],c:1},
+      {p:"Variáveis em PHP começam com:",opts:["$","&","#","@"],c:0},
+      {p:"Framework mais popular para PHP?",opts:["Django","Laravel","Express","Rails"],c:1},
+      {p:"Função para exibir texto?",opts:["print_r","echo","console.log","write"],c:1},
+      {p:"Para conectar ao banco nativo usamos:",opts:["mysql_old","PDO","mysqli","PDO e mysqli ambos"],c:3},
+      {p:"'===' em PHP verifica:",opts:["Só valor","Valor e tipo","Só tipo","Referência"],c:1},
+      {p:"Qual função conta elementos de array?",opts:["length()","size()","count()","sizeof()"],c:2},
+      {p:"Superglobal para dados POST:",opts:["$_GET","$_POST","$_REQUEST","$_DATA"],c:1},
+      {p:"PHP 8 introduziu:",opts:["Closures","JIT Compiler","PDO","Namespaces"],c:1},
+      {p:"Composer serve para:",opts:["Compilar PHP","Gerenciar dependências","Testar código","Deploy"],c:1}
+    ]
+  },
+  { id:"pandas", name:"Pandas", icon:"fas fa-chart-bar",
+    desc:"Biblioteca Python para análise e manipulação de dados tabulares.",
+    aplicacoes:"Data wrangling, limpeza, agregação, EDA, relatórios.",
+    historia:"📜 Wes McKinney (2008). DataFrames revolucionaram análise de dados em Python.",
+    historiaCompleta:`<strong>Pandas</strong> foi criado por <strong>Wes McKinney</strong> em <strong>2008</strong> enquanto trabalhava na AQR Capital Management, uma firma de investimentos quantitativos. Frustrado com as ferramentas disponíveis para análise de dados financeiros em Python, ele desenvolveu a biblioteca do zero. O nome vem de <strong>"Panel Data"</strong>, um termo de econometria para dados multidimensionais estruturados.<br><br>
+    O lançamento open-source em 2009 foi revolucionário: o conceito de <strong>DataFrame</strong> (inspirado no R) trouxe para Python a capacidade de manipular dados tabulares com sintaxe intuitiva. Hoje Pandas é a pedra angular de todo pipeline de Data Science, trabalhando em conjunto com NumPy (cálculos numéricos), Matplotlib/Seaborn (visualização), Scikit-learn (ML) e mais. A versão 2.0 trouxe suporte a Apache Arrow como backend, aumentando drasticamente a performance.`,
+    curiosidades:[
+      {k:"Origem financeira", v:"Pandas nasceu para análise de dados financeiros em uma firma de hedge funds, não para ciência de dados genérica."},
+      {k:"DataFrame veio do R", v:"O conceito de DataFrame foi inspirado na linguagem R, dominante em estatística acadêmica antes do Python."},
+      {k:"Mais de 10M de downloads/mês", v:"Pandas é uma das bibliotecas Python mais baixadas do mundo, presente em praticamente todo projeto de dados."},
+      {k:"Pandas 2.0 com Arrow", v:"A versão 2.0 permite usar Apache Arrow como backend, tornando operações em grandes datasets muito mais rápidas."},
+    ],
+    codigo:'import pandas as pd\n\n# Criar DataFrame de alunos\ndf = pd.DataFrame({\n  "nome":    ["Ana","Bruno","Carla","Diego"],\n  "nota":    [8.5, 7.2, 9.1, 6.8],\n  "turma":   ["A","B","A","B"]\n})\n\n# Análise por turma\ngrupo = df.groupby("turma")["nota"].mean()\nprint(grupo)\nprint(f"\\nMelhor aluno: {df.loc[df.nota.idxmax(), \'nome\']}")',
+    output:`turma\nA    8.80\nB    7.00\ndtype: float64\n\nMelhor aluno: Carla`,
+    fatos:["Integração NumPy","Leitura CSV/Excel/JSON","GroupBy/Pivot","Merge/Join de tabelas","Visualização via Matplotlib"],
+    quiz:[
+      {p:"Estrutura principal do Pandas?",opts:["Array","Matrix","DataFrame","Table"],c:2},
+      {p:"Como ler arquivo CSV?",opts:["pd.read_csv()","pd.load_csv()","pd.import_csv()","pd.open_csv()"],c:0},
+      {p:"Para agrupar dados usamos:",opts:["aggregate()","pivot()","groupby()","cluster()"],c:2},
+      {p:"NaN significa:",opts:["Null and None","Not a Name","Not a Number","No Available"],c:2},
+      {p:"Método para remover valores nulos?",opts:["remove_null()","dropna()","fillna()","clean()"],c:1},
+      {p:"Para filtrar linhas em DataFrame:",opts:["df.filter()","df[condição]","df.where()","df.select()"],c:1},
+      {p:"merge() em Pandas equivale a:",opts:["UNION SQL","JOIN SQL","INSERT SQL","UPDATE SQL"],c:1},
+      {p:"df.describe() retorna:",opts:["Tipos de dados","Estatísticas descritivas","Primeiras linhas","Colunas"],c:1},
+      {p:"Para renomear colunas usamos:",opts:["df.rename()","df.columns()","df.relabel()","df.set_col()"],c:0},
+      {p:"pd.concat() serve para:",opts:["Multiplicar DataFrames","Concatenar DataFrames","Criar índice","Filtrar dados"],c:1}
+    ]
+  },
+  { id:"ia", name:"IA & ML", icon:"fas fa-robot",
+    desc:"Inteligência Artificial, Machine Learning e Deep Learning.",
+    aplicacoes:"Visão computacional, NLP, predições, LLMs, agentes.",
+    historia:"📜 Dartmouth Conference (1956). Deep Learning pós-2012. Era dos LLMs e Transformers atual.",
+    historiaCompleta:`A <strong>Inteligência Artificial</strong> como campo científico nasceu oficialmente na <strong>Conferência de Dartmouth em 1956</strong>, organizada por John McCarthy, Marvin Minsky e outros. O otimismo inicial foi seguido de "invernos da IA" — períodos de baixo financiamento e ceticismo nos anos 70 e 80.<br><br>
+    A virada veio em <strong>2012</strong> quando a rede neural profunda AlexNet ganhou o ImageNet com margem histórica, inaugurando a era do Deep Learning. Em 2017, o paper <strong>"Attention Is All You Need"</strong> (Google) apresentou a arquitetura Transformer, base de todos os grandes modelos atuais. O lançamento do <strong>ChatGPT em novembro de 2022</strong> (OpenAI) democratizou o acesso a LLMs (Large Language Models), mudando para sempre a relação da sociedade com a IA. Hoje, modelos como GPT-4, Gemini, Claude e Llama competem num mercado de trilhões de dólares.`,
+    curiosidades:[
+      {k:"Transformer mudou tudo", v:"A arquitetura Transformer (2017) é a base de GPT, BERT, Claude, Gemini e praticamente todos os LLMs modernos."},
+      {k:"ChatGPT: 100M usuários em 2 meses", v:"Nenhum produto na história atingiu 100 milhões de usuários tão rápido quanto o ChatGPT."},
+      {k:"GPU foi acidental para IA", v:"As GPUs foram criadas para games, mas sua capacidade de paralelismo as tornou ideais para treinar redes neurais."},
+      {k:"Viés algorítmico é real", v:"Modelos de ML treinados em dados históricos podem perpetuar discriminações presentes nesses dados."},
+    ],
+    codigo:'from sklearn.ensemble import RandomForestClassifier\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.metrics import accuracy_score\nimport numpy as np\n\n# Dataset fictício: notas e horas de estudo\nX = np.array([[8.5,4],[7.2,3],[9.1,5],[5.8,1],[6.2,2],[8.0,4]])\ny = np.array([1, 1, 1, 0, 0, 1])  # 1=aprovado\n\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)\n\nmodel = RandomForestClassifier(n_estimators=100, random_state=42)\nmodel.fit(X_train, y_train)\n\nacc = accuracy_score(y_test, model.predict(X_test))\nprint(f"Acurácia do modelo: {acc:.0%}")',
+    output:`Acurácia do modelo: 100%\n\n[Nota: com datasets pequenos, 100% é comum\ne não indica generalização real do modelo]`,
+    fatos:["Transformers (2017)","ChatGPT/GPT-4","TensorFlow/PyTorch","Redes Neurais Convolucionais","RAG e Agentes IA"],
+    quiz:[
+      {p:"Algoritmo supervisionado de classificação:",opts:["K-Means","PCA","Random Forest","DBSCAN"],c:2},
+      {p:"LLM significa:",opts:["Large Language Model","Linear Logic Module","Low-Level Machine","Latent Learning Map"],c:0},
+      {p:"Framework Google para deep learning?",opts:["PyTorch","Keras só","TensorFlow","Scikit-learn"],c:2},
+      {p:"CNN é usada principalmente para:",opts:["NLP","Áudio","Imagens","Tabelas"],c:2},
+      {p:"Overfitting significa:",opts:["Modelo muito simples","Modelo decora treino","Alta acurácia real","Dados insuficientes"],c:1},
+      {p:"'Transformer' introduziu qual mecanismo?",opts:["Backpropagation","Convoluções","Self-Attention","Dropout"],c:2},
+      {p:"RAG significa:",opts:["Random Accuracy Generator","Retrieval-Augmented Generation","Recurrent Agent Graph","Rule-based AI Grammar"],c:1},
+      {p:"Qual métrica avalia classificação balanceada?",opts:["Acurácia","F1-Score","MSE","R²"],c:1},
+      {p:"Aprendizado não-supervisionado agrupa com:",opts:["Regressão","K-Means","SVM","XGBoost"],c:1},
+      {p:"'Embeddings' são:",opts:["Imagens vetorizadas","Pesos de rede","Representações vetoriais de texto","Hiperparâmetros"],c:2}
+    ]
+  }
+];
+
+const ALL_EMOJIS = [
+  "😀","😁","😂","🤣","😃","😄","😅","😆","😊","😎",
+  "🥳","🤩","😍","🥰","😘","😜","🤪","😏","🤔","🧐",
+  "😤","🥺","😭","😱","😡","🤯","🤗","🤝","👋","✌️",
+  "👍","👎","👏","🙌","💪","🫶","❤️","🔥","⚡","✨",
+  "🌟","💯","🏆","🎯","🎉","🎊","🚀","💻","🖥️","📱",
+  "🐍","☕","🔷","🐼","🤖","📊","🧠","💡","🔑","🛠️",
+  "📚","✏️","🎓","🏫","⌨️","🖱️","💾","📡","🔬","🧪",
+  "🌈","🌙","⭐","☀️","🌊","🍕","🍔","🎮","🎵","🎸",
+  "😴","🤤","😵","🤠","🥸","🧑‍💻","👩‍💻","👨‍💻","🤓","😈"
+];
+const STICKERS = ["🎉🎊🎈","🏆✨💯","🔥💪🚀","🧠💡⚡","🐍❤️💻","😎👍🌟","🤖🎯🔬","📚🎓🏫"];
+
+// ============================================================
+// BUILD TABS
+// ============================================================
+const tabsNav = document.getElementById("tabsNav");
+const main    = document.getElementById("mainContent");
+
+function addTabBtn(id, icon, label, active=false, extraClass="") {
+  const btn = document.createElement("button");
+  btn.className = "tab-btn" + (active?" active":"") + (extraClass?" "+extraClass:"");
+  btn.dataset.tab = id;
+  btn.innerHTML = `<i class="${icon}"></i> ${label}`;
+  btn.addEventListener("click", () => switchTab(id));
+  tabsNav.appendChild(btn);
+}
+
+function switchTab(id) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add("active");
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-"+id)?.classList.add("active");
+}
+
+// ---- LANGUAGE TABS ----
+LANGS.forEach((lang, i) => {
+  addTabBtn(lang.id, lang.icon, lang.name, i===0);
+  const div = document.createElement("div");
+  div.className = "tab-content" + (i===0?" active":"");
+  div.id = "tab-"+lang.id;
+  div.innerHTML = `
+    <div class="grid-2">
+      <div class="card">
+        <div class="history-badge">${lang.historia}</div>
+        <h3><i class="${lang.icon}"></i> ${lang.name}</h3>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:.6rem">${lang.desc}</p>
+        <p style="font-size:0.82rem"><strong>🎯 Aplicações:</strong> ${lang.aplicacoes}</p>
+
+        <div class="lang-history-full">${lang.historiaCompleta}</div>
+
+        <div class="curiosity-box">
+          <h4><i class="fas fa-lightbulb"></i> Curiosidades & Fatos</h4>
+          ${lang.curiosidades.map(c=>`
+            <div class="curiosity-item"><span>💡 ${c.k}:</span> ${c.v}</div>
+          `).join("")}
+        </div>
+
+        <div class="fact-tags">${lang.fatos.map(f=>`<span class="fact-tag">✦ ${f}</span>`).join("")}</div>
+        <button class="btn btn-green" style="margin-top:1rem" onclick="openQuiz('${lang.id}')">
+          <i class="fas fa-brain"></i> Quiz — ${lang.quiz.length} perguntas
+        </button>
+      </div>
+      <div class="card">
+        <h3><i class="fas fa-terminal"></i> Exemplo de Código</h3>
+        <div class="code-block"><pre>${escHtml(lang.codigo)}</pre></div>
+        <div class="output-label">saída do programa</div>
+        <div class="code-output-bar"><pre style="margin:0;white-space:pre-wrap">${escHtml(lang.output)}</pre></div>
+        <div style="margin-top:.8rem">
+          <h4 style="font-size:.85rem;margin-bottom:.5rem">⚡ Dicas Avançadas</h4>
+          <ul style="font-size:.8rem;color:var(--text-muted);padding-left:1rem;line-height:2">
+            <li>Pratique projetos reais pequenos</li>
+            <li>Leia a documentação oficial</li>
+            <li>Contribua em projetos open source</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
+  main.appendChild(div);
+});
+
+// ---- ACTIVITIES TAB ----
+addTabBtn("activities","fas fa-book-open","📂 Atividades", false, "tab-activities");
+
+// Storage de atividades (localStorage simulado em memória)
+let ACTIVITIES = [
+  {
+    id:"act1", title:"Lista 01 — Estruturas HTML Semânticas", type:"pdf",
+    lang:"HTML", level:"init", desc:"Exercícios práticos sobre tags semânticas do HTML5: header, nav, main, article, section, footer. Inclui gabarito comentado.",
+    date:"15/05/2025", size:"320 KB", url:null, dataUrl:null
+  },
+  {
+    id:"act2", title:"Planilha de Avaliação — Notas e Médias", type:"excel",
+    lang:"Python", level:"inter", desc:"Planilha Excel com fórmulas prontas para calcular médias, situação dos alunos e gráfico de desempenho por turma.",
+    date:"18/05/2025", size:"45 KB", url:null, dataUrl:null
+  },
+  {
+    id:"act3", title:"Projeto Guiado — Sistema de Login com PHP", type:"word",
+    lang:"PHP", level:"inter", desc:"Documento Word com passo a passo completo para criar um sistema de login seguro com PHP 8, PDO e hash de senhas.",
+    date:"20/05/2025", size:"1.2 MB", url:null, dataUrl:null
+  },
+  {
+    id:"act4", title:"Desafio — Machine Learning com Scikit-Learn", type:"pdf",
+    lang:"IA & ML", level:"adv", desc:"Desafio prático de classificação usando Random Forest e SVM. Inclui dataset CSV e instruções para análise exploratória.",
+    date:"22/05/2025", size:"780 KB", url:null, dataUrl:null
+  },
+  {
+    id:"act5", title:"Exercício — Flexbox e Grid Layout", type:"word",
+    lang:"CSS", level:"init", desc:"Atividade prática com 10 exercícios de CSS moderno: Flexbox, Grid, variáveis CSS e animações. Com gabarito em ZIP.",
+    date:"25/05/2025", size:"540 KB", url:null, dataUrl:null
+  }
+];
+
+const actDiv = document.createElement("div");
+actDiv.className = "tab-content";
+actDiv.id = "tab-activities";
+actDiv.innerHTML = `
+  <div class="activities-hero">
+    <h2>📂 Central de Atividades</h2>
+    <p>Acesse, visualize e baixe materiais de estudo: PDFs, documentos Word, planilhas Excel e imagens. Tudo organizado e fácil de encontrar.</p>
+  </div>
+
+  <div class="act-stats-row" id="actStatsRow"></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.5rem" class="grid-2">
+    <!-- Upload Card -->
+    <div class="upload-form-card">
+      <h3><i class="fas fa-cloud-upload-alt"></i> Enviar Nova Atividade</h3>
+      <label>Título da atividade *</label>
+      <input class="form-input" id="actTitle" placeholder="Ex: Lista 02 — Funções em JavaScript">
+      <div class="form-row">
+        <div>
+          <label>Linguagem/Tema</label>
+          <select class="form-select" id="actLang">
+            <option>HTML</option><option>CSS</option><option>JavaScript</option>
+            <option>Python</option><option>Java</option><option>PHP</option>
+            <option>Pandas</option><option>IA & ML</option><option>Geral</option>
+          </select>
+        </div>
+        <div>
+          <label>Nível</label>
+          <select class="form-select" id="actLevel">
+            <option value="init">🟢 Iniciante</option>
+            <option value="inter">🟡 Intermediário</option>
+            <option value="adv">🔴 Avançado</option>
+          </select>
+        </div>
+      </div>
+      <label>Descrição</label>
+      <textarea class="form-textarea" id="actDesc" placeholder="Descreva o conteúdo e objetivo desta atividade..."></textarea>
+      <label>Arquivo ou Imagem</label>
+      <div class="upload-zone-act" id="actUploadZone">
+        <div class="upload-zone-icon">📎</div>
+        <h4>Arraste ou clique para selecionar</h4>
+        <p>PDF, Word (.docx), Excel (.xlsx) ou imagens</p>
+        <div class="upload-formats">
+          <span class="fmt-chip fmt-pdf">PDF</span>
+          <span class="fmt-chip fmt-word">WORD</span>
+          <span class="fmt-chip fmt-excel">EXCEL</span>
+          <span class="fmt-chip fmt-image">IMG</span>
+        </div>
+        <input type="file" id="actFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp" style="display:none">
+        <div id="actFilePreview" style="margin-top:.8rem"></div>
+      </div>
+      <button class="btn btn-purple" id="actSendBtn" style="margin-top:1rem;width:100%;justify-content:center">
+        <i class="fas fa-paper-plane"></i> Publicar Atividade
+      </button>
+      <div id="actSuccess" style="display:none;background:rgba(139,92,246,.1);border:1px solid var(--purple);border-radius:12px;padding:.8rem;margin-top:.8rem;text-align:center;color:#a78bfa">
+        ✅ Atividade publicada com sucesso!
+      </div>
+    </div>
+
+    <!-- Imagem gallery / quick tips -->
+    <div class="card" style="border-color:rgba(139,92,246,0.2)">
+      <h3><i class="fas fa-images"></i> Galeria de Imagens</h3>
+      <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:1rem">Imagens enviadas nas atividades aparecem aqui para visualização rápida.</p>
+      <div class="img-gallery" id="imgGallery">
+        <div style="color:var(--text-muted);font-size:.78rem;grid-column:1/-1;text-align:center;padding:2rem">
+          <i class="fas fa-image" style="font-size:2rem;display:block;margin-bottom:.5rem;color:var(--border)"></i>
+          Nenhuma imagem enviada ainda.<br>Envie uma imagem acima!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="act-filter-row">
+    <span style="font-size:.78rem;color:var(--text-muted);font-weight:600">Filtrar:</span>
+    <button class="act-filter-btn active" data-filter="all">📂 Todos</button>
+    <button class="act-filter-btn" data-filter="pdf">📄 PDF</button>
+    <button class="act-filter-btn" data-filter="word">📝 Word</button>
+    <button class="act-filter-btn" data-filter="excel">📊 Excel</button>
+    <button class="act-filter-btn" data-filter="image">🖼️ Imagens</button>
+    <input class="act-search" id="actSearch" placeholder="🔍 Buscar atividade...">
+  </div>
+
+  <!-- Grid de atividades -->
+  <div class="act-grid" id="actGrid"></div>
+`;
+main.appendChild(actDiv);
+
+// ---- Render atividades ----
+function getTypeIcon(type) {
+  const icons = {pdf:"fas fa-file-pdf", word:"fas fa-file-word", excel:"fas fa-file-excel", image:"fas fa-image", link:"fas fa-link"};
+  return icons[type] || "fas fa-file";
+}
+function getTypeCss(type) { return "type-"+type; }
+function getBadgeType(type) { return `badge-${type}`; }
+function getLevelBadge(level) {
+  const m = {init:["init","🟢 Iniciante"], inter:["inter","🟡 Intermediário"], adv:["adv","🔴 Avançado"]};
+  const [cls, label] = m[level] || ["init","Iniciante"];
+  return `<span class="act-badge badge-level-${cls}">${label}</span>`;
+}
+
+function renderActivities(filterType="all", search="") {
+  const grid = actDiv.querySelector("#actGrid");
+  let list = ACTIVITIES.filter(a => {
+    const matchType = filterType==="all" || a.type===filterType;
+    const matchSearch = !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.lang.toLowerCase().includes(search.toLowerCase()) || a.desc.toLowerCase().includes(search.toLowerCase());
+    return matchType && matchSearch;
+  });
+  if(!list.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)"><i class="fas fa-search" style="font-size:2rem;margin-bottom:.8rem;display:block;color:var(--border)"></i>Nenhuma atividade encontrada.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(a => `
+    <div class="act-card act-card-type-${a.type}" data-id="${a.id}">
+      <div class="act-card-header">
+        <div class="act-type-icon ${getTypeCss(a.type)}">
+          <i class="${getTypeIcon(a.type)}"></i>
+        </div>
+        <div>
+          <div class="act-card-title">${a.title}</div>
+          <div class="act-card-meta">
+            <span class="act-badge ${getBadgeType(a.type)}">${a.type.toUpperCase()}</span>
+            <span class="act-badge badge-lang">${a.lang}</span>
+            ${getLevelBadge(a.level)}
+          </div>
+        </div>
+      </div>
+      <div class="act-card-desc">${a.desc}</div>
+      <div class="act-card-footer">
+        <span class="act-card-date"><i class="fas fa-calendar-alt" style="margin-right:3px"></i>${a.date}${a.size?` · ${a.size}`:""}</span>
+        <div class="act-card-btns">
+          ${a.type==="image" || a.dataUrl || a.url
+            ? `<button class="act-mini-btn act-mini-btn-view" onclick="viewActivity('${a.id}')"><i class="fas fa-eye"></i> Ver</button>`
+            : `<button class="act-mini-btn act-mini-btn-view" onclick="previewInfo('${a.id}')"><i class="fas fa-info-circle"></i> Info</button>`
+          }
+          <button class="act-mini-btn act-mini-btn-down" onclick="downloadActivity('${a.id}')">
+            <i class="fas fa-download"></i> Baixar
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderStats() {
+  const statsRow = actDiv.querySelector("#actStatsRow");
+  const total = ACTIVITIES.length;
+  const pdfs = ACTIVITIES.filter(a=>a.type==="pdf").length;
+  const words = ACTIVITIES.filter(a=>a.type==="word").length;
+  const excels = ACTIVITIES.filter(a=>a.type==="excel").length;
+  const imgs = ACTIVITIES.filter(a=>a.type==="image").length;
+  statsRow.innerHTML = `
+    <div class="act-stat-card"><div class="act-stat-num">${total}</div><div class="act-stat-label">Total</div></div>
+    <div class="act-stat-card"><div class="act-stat-num" style="color:#f87171">${pdfs}</div><div class="act-stat-label">PDFs</div></div>
+    <div class="act-stat-card"><div class="act-stat-num" style="color:#60a5fa">${words}</div><div class="act-stat-label">Word</div></div>
+    <div class="act-stat-card"><div class="act-stat-num" style="color:#4ade80">${excels}</div><div class="act-stat-label">Excel</div></div>
+    <div class="act-stat-card"><div class="act-stat-num" style="color:#c084fc">${imgs}</div><div class="act-stat-label">Imagens</div></div>
+  `;
+}
+
+renderActivities();
+renderStats();
+
+// Filtros
+let currentFilter = "all";
+actDiv.querySelectorAll(".act-filter-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    actDiv.querySelectorAll(".act-filter-btn").forEach(b=>b.classList.remove("active"));
+    this.classList.add("active");
+    currentFilter = this.dataset.filter;
+    renderActivities(currentFilter, actDiv.querySelector("#actSearch").value);
+  });
+});
+actDiv.querySelector("#actSearch").addEventListener("input", function() {
+  renderActivities(currentFilter, this.value);
+});
+
+// Upload de arquivo
+let pendingFile = null;
+let pendingDataUrl = null;
+let pendingFileType = null;
+
+const actUploadZone = actDiv.querySelector("#actUploadZone");
+const actFileInput  = actDiv.querySelector("#actFileInput");
+actUploadZone.addEventListener("click", () => actFileInput.click());
+actUploadZone.addEventListener("dragover", e => { e.preventDefault(); actUploadZone.classList.add("drag-over"); });
+actUploadZone.addEventListener("dragleave", () => actUploadZone.classList.remove("drag-over"));
+actUploadZone.addEventListener("drop", e => {
+  e.preventDefault();
+  actUploadZone.classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if(file) handleFileSelected(file);
+});
+actFileInput.addEventListener("change", e => {
+  if(e.target.files[0]) handleFileSelected(e.target.files[0]);
+});
+
+function handleFileSelected(file) {
+  pendingFile = file;
+  const ext = file.name.split(".").pop().toLowerCase();
+  const imgExts = ["png","jpg","jpeg","gif","webp"];
+  pendingFileType = imgExts.includes(ext) ? "image" : ext==="pdf" ? "pdf" : ["doc","docx"].includes(ext) ? "word" : ["xls","xlsx"].includes(ext) ? "excel" : "pdf";
+  const sizeKB = (file.size/1024).toFixed(0);
+  const preview = actDiv.querySelector("#actFilePreview");
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingDataUrl = ev.target.result;
+    const icon = pendingFileType==="image" ? `<img src="${pendingDataUrl}" style="max-width:100%;max-height:120px;border-radius:8px;margin-top:6px">` : `<i class="fas ${getTypeIcon(pendingFileType)}" style="font-size:2rem;color:var(--green)"></i>`;
+    preview.innerHTML = `<div style="text-align:center;padding:.5rem">${icon}<br><span style="font-size:.72rem;color:var(--green)">${file.name} · ${sizeKB} KB</span></div>`;
+  };
+  reader.readAsDataURL(file);
+  actUploadZone.classList.add("drag-over");
+}
+
+actDiv.querySelector("#actSendBtn").addEventListener("click", () => {
+  const title = actDiv.querySelector("#actTitle").value.trim();
+  if(!title) { alert("Digite o título da atividade!"); return; }
+  const lang  = actDiv.querySelector("#actLang").value;
+  const level = actDiv.querySelector("#actLevel").value;
+  const desc  = actDiv.querySelector("#actDesc").value.trim() || "Atividade enviada pelo professor.";
+  const type  = pendingFile ? pendingFileType : "pdf";
+  const size  = pendingFile ? `${(pendingFile.size/1024).toFixed(0)} KB` : "—";
+  const newAct = {
+    id: "act"+Date.now(), title, type, lang, level, desc,
+    date: new Date().toLocaleDateString("pt-BR"),
+    size, url:null, dataUrl: pendingDataUrl || null
+  };
+  ACTIVITIES.unshift(newAct);
+  renderActivities(currentFilter, actDiv.querySelector("#actSearch").value);
+  renderStats();
+  updateImageGallery();
+  // Reset form
+  actDiv.querySelector("#actTitle").value = "";
+  actDiv.querySelector("#actDesc").value = "";
+  actDiv.querySelector("#actFilePreview").innerHTML = "";
+  actUploadZone.classList.remove("drag-over");
+  pendingFile = null; pendingDataUrl = null; pendingFileType = null;
+  actFileInput.value = "";
+  const success = actDiv.querySelector("#actSuccess");
+  success.style.display = "block";
+  setTimeout(()=>success.style.display="none",3000);
+});
+
+function updateImageGallery() {
+  const gallery = actDiv.querySelector("#imgGallery");
+  const imgs = ACTIVITIES.filter(a => a.type==="image" && a.dataUrl);
+  if(!imgs.length) {
+    gallery.innerHTML = `<div style="color:var(--text-muted);font-size:.78rem;grid-column:1/-1;text-align:center;padding:2rem"><i class="fas fa-image" style="font-size:2rem;display:block;margin-bottom:.5rem;color:var(--border)"></i>Nenhuma imagem enviada ainda.</div>`;
+    return;
+  }
+  gallery.innerHTML = imgs.map(a => `
+    <div class="img-gallery-item" onclick="viewActivity('${a.id}')" title="${a.title}">
+      <img src="${a.dataUrl}" alt="${a.title}">
+    </div>
+  `).join("");
+}
+
+// View Activity
+window.viewActivity = function(id) {
+  const a = ACTIVITIES.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById("viewModalTitle").textContent = a.title;
+  const body = document.getElementById("viewModalBody");
+  if(a.type==="image" && a.dataUrl) {
+    body.innerHTML = `<img class="view-modal-img" src="${a.dataUrl}" alt="${a.title}">`;
+  } else if(a.type==="pdf" && a.dataUrl) {
+    body.innerHTML = `<iframe class="view-modal-pdf" src="${a.dataUrl}"></iframe>`;
+  } else {
+    body.innerHTML = `<div class="no-preview"><i class="fas ${getTypeIcon(a.type)}"></i><div style="text-align:center"><strong>${a.title}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${a.type.toUpperCase()} · ${a.size}</span><br><span style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;display:block">Visualização inline não disponível para este tipo.<br>Clique em "Baixar" para abrir o arquivo.</span></div></div>`;
+  }
+  document.getElementById("viewModalDownload").onclick = () => downloadActivity(id);
+  document.getElementById("viewModal").classList.add("open");
+};
+
+window.previewInfo = function(id) {
+  const a = ACTIVITIES.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById("viewModalTitle").textContent = a.title;
+  document.getElementById("viewModalBody").innerHTML = `
+    <div style="padding:1rem">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:1rem">
+        <div class="act-type-icon ${getTypeCss(a.type)}" style="width:56px;height:56px;font-size:1.6rem"><i class="${getTypeIcon(a.type)}"></i></div>
+        <div>
+          <div style="font-weight:700;font-size:1rem">${a.title}</div>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">${a.type.toUpperCase()} · ${a.lang} · ${a.size}</div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:1rem;font-size:.82rem;color:var(--text-muted);line-height:1.7">${a.desc}</div>
+      <div style="margin-top:1rem;font-size:.75rem;color:var(--border)">📅 Publicado em ${a.date}</div>
+      <div style="margin-top:1rem;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:.8rem;font-size:.78rem;color:#fde68a">
+        ℹ️ Este arquivo foi adicionado como exemplo. Para atividades reais, o arquivo será enviado pelo professor e ficará disponível para download.
+      </div>
+    </div>
+  `;
+  document.getElementById("viewModalDownload").onclick = () => downloadActivity(id);
+  document.getElementById("viewModal").classList.add("open");
+};
+
+window.downloadActivity = function(id) {
+  const a = ACTIVITIES.find(x=>x.id===id);
+  if(!a) return;
+  if(a.dataUrl) {
+    const link = document.createElement("a");
+    link.href = a.dataUrl;
+    const exts = {pdf:".pdf",word:".docx",excel:".xlsx",image:".png"};
+    link.download = a.title.replace(/[^a-zA-Z0-9\s]/g,"").substring(0,40) + (exts[a.type]||".file");
+    link.click();
+  } else {
+    alert("📥 Download disponível!\n\nEm uma versão com servidor, o arquivo seria baixado automaticamente.\nEste é um exemplo demonstrativo.");
+  }
+};
+
+// Fechar view modal ao clicar fora
+document.getElementById("viewModal").addEventListener("click", function(e) {
+  if(e.target===this) this.classList.remove("open");
+});
+
+// ---- CHAT TAB (WhatsApp-style) ----
+addTabBtn("chat","fab fa-whatsapp","Chat");
+const chatDiv = document.createElement("div");
+chatDiv.className = "tab-content";
+chatDiv.id = "tab-chat";
+chatDiv.innerHTML = `
+<div class="wa-shell">
+  <div class="wa-sidebar" id="waSidebar">
+    <div class="wa-sidebar-header">
+      <div class="wa-my-avatar" id="waMyAvatar" title="Ver meu perfil">?</div>
+      <div class="wa-sidebar-title">DEVS CODE LAB</div>
+      <div class="wa-sidebar-actions">
+        <button class="wa-icon-btn" id="newGroupBtn" title="Novo grupo"><i class="fas fa-users"></i></button>
+        <button class="wa-icon-btn" id="openSettingsBtn" title="Configurações"><i class="fas fa-cog"></i></button>
+      </div>
+    </div>
+    <div class="wa-search-box">
+      <input class="wa-search-input" id="waSearchInput" placeholder="🔍 Pesquisar conversa">
+    </div>
+    <div class="wa-convo-list" id="waConvoList">
+      <div class="wa-convo-item active" data-channel="geral" data-type="group" data-name="Grupo Geral Devs">
+        <div class="wa-convo-avatar group-av">💬</div>
+        <div class="wa-convo-info">
+          <div class="wa-convo-name">Grupo Geral Devs</div>
+          <div class="wa-convo-last" id="lastMsgGeral">Carregando...</div>
+        </div>
+        <div class="wa-convo-meta">
+          <div class="wa-convo-time" id="lastTimeGeral"></div>
+          <div class="wa-unread-badge" id="unreadGeral" style="display:none">0</div>
+        </div>
+      </div>
+      <div id="waGroupList"></div>
+      <div class="wa-section-label"><i class="fas fa-circle" style="color:var(--green);font-size:.5rem"></i> Usuários Online</div>
+      <div id="waUserList"></div>
+    </div>
+  </div>
+
+  <div class="wa-main" id="waMain">
+    <div class="wa-chat-header">
+      <button class="wa-back-btn" id="waBackBtn"><i class="fas fa-arrow-left"></i></button>
+      <div class="wa-chat-header-av" id="waChatHeaderAv">💬</div>
+      <div class="wa-chat-header-info">
+        <div class="wa-chat-header-name" id="waChatHeaderName">Grupo Geral Devs</div>
+        <div class="wa-chat-header-sub" id="waChatHeaderSub">conectando...</div>
+      </div>
+      <div class="wa-chat-header-actions">
+        <button class="wa-icon-btn" id="waChatSearchBtn" title="Pesquisar"><i class="fas fa-search"></i></button>
+      </div>
+    </div>
+    <div class="wa-msgs-area" id="waMsgsArea">
+      <div class="bubble bubble-system">🔄 Conectando ao chat...</div>
+    </div>
+    <div class="wa-emoji-panel" id="waEmojiPanel" style="display:none">
+      <div class="wa-emoji-grid" id="waEmojiGrid"></div>
+    </div>
+    <div class="wa-input-bar">
+      <button class="wa-icon-btn wa-emoji-toggle" id="waEmojiToggle" title="Emoji"><i class="fas fa-smile"></i></button>
+      <div class="wa-input-wrap">
+        <textarea class="wa-input" id="waInput" placeholder="Digite uma mensagem" rows="1" maxlength="1000"></textarea>
+      </div>
+      <label class="wa-icon-btn" title="Foto/Vídeo" style="cursor:pointer;margin:0">
+        <i class="fas fa-paperclip"></i>
+        <input type="file" id="waMediaInput" accept="image/*,video/*" style="display:none">
+      </label>
+      <button class="wa-send-btn" id="waSendBtn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<div class="wa-profile-panel" id="waProfilePanel" style="display:none">
+  <div class="wa-profile-inner">
+    <div class="wa-profile-header">
+      <button class="wa-icon-btn" id="closeProfileBtn"><i class="fas fa-times"></i></button>
+      <h3>Meu Perfil</h3>
+    </div>
+    <div class="wa-profile-avatar-wrap">
+      <div class="wa-profile-big-avatar" id="waProfileBigAv">?</div>
+      <label class="wa-avatar-change-btn" title="Alterar foto">
+        <i class="fas fa-camera"></i>
+        <input type="file" id="waAvatarInput" accept="image/*" style="display:none">
+      </label>
+    </div>
+    <div class="wa-profile-body">
+      <div class="wa-profile-section">
+        <div class="wa-profile-label">Seu nome</div>
+        <div class="wa-profile-edit-row">
+          <input class="wa-profile-input" id="waProfileName" placeholder="Seu nome">
+          <button class="wa-save-btn" id="waProfileNameSave"><i class="fas fa-check"></i></button>
+        </div>
+      </div>
+      <div class="wa-profile-section">
+        <div class="wa-profile-label">Recado / Bio</div>
+        <div class="wa-profile-edit-row">
+          <input class="wa-profile-input" id="waProfileBio" placeholder="Olá! Estou no DEVS CODE LAB">
+          <button class="wa-save-btn" id="waProfileBioSave"><i class="fas fa-check"></i></button>
+        </div>
+      </div>
+      <div class="wa-profile-section">
+        <div class="wa-profile-label">E-mail</div>
+        <div class="wa-profile-email" id="waProfileEmail">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wa-modal-overlay" id="newGroupModal" style="display:none">
+  <div class="wa-modal-box">
+    <div class="wa-modal-header">
+      <h3><i class="fas fa-users"></i> Novo Grupo</h3>
+      <button class="wa-icon-btn" id="closeGroupModal"><i class="fas fa-times"></i></button>
+    </div>
+    <input class="wa-profile-input" id="newGroupName" placeholder="Nome do grupo" style="margin-bottom:.8rem">
+    <input class="wa-profile-input" id="newGroupDesc" placeholder="Descrição (opcional)" style="margin-bottom:1rem">
+    <button class="wa-send-btn" id="createGroupBtn" style="width:100%;border-radius:12px;padding:10px;display:flex;justify-content:center;gap:6px">
+      <i class="fas fa-plus"></i> Criar Grupo
+    </button>
+  </div>
+</div>
+
+<div class="wa-modal-overlay" id="settingsModal" style="display:none">
+  <div class="wa-modal-box">
+    <div class="wa-modal-header">
+      <h3><i class="fas fa-cog"></i> Configurações</h3>
+      <button class="wa-icon-btn" id="closeSettingsModal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="wa-settings-section">
+      <div class="wa-settings-label">Trocar nome de exibição</div>
+      <div class="wa-profile-edit-row">
+        <input class="wa-profile-input" id="settingsNameInput" placeholder="Novo nome">
+        <button class="wa-save-btn" id="settingsNameSave"><i class="fas fa-check"></i></button>
+      </div>
+      <div class="wa-settings-feedback" id="settingsNameFeedback"></div>
+    </div>
+    <div class="wa-settings-section">
+      <div class="wa-settings-label">Trocar bio / Recado</div>
+      <div class="wa-profile-edit-row">
+        <input class="wa-profile-input" id="settingsBioInput" placeholder="Seu recado">
+        <button class="wa-save-btn" id="settingsBioSave"><i class="fas fa-check"></i></button>
+      </div>
+    </div>
+    <div class="wa-settings-section">
+      <div class="wa-settings-label">Conta</div>
+      <button class="logout-btn" onclick="doLogout()" style="margin-top:.5rem"><i class="fas fa-sign-out-alt"></i> Sair da conta</button>
+    </div>
+  </div>
+</div>
+`;
+main.appendChild(chatDiv);
+
+// ============================================================
+// CHAT WHATSAPP LOGIC — v3 corrigido
+// ============================================================
+
+// ─── Helpers ─────────────────────────────────────────────────
+function getChatName() {
+  return (window._currentUser && window._currentUser.displayName)
+    ? window._currentUser.displayName : "Anônimo";
+}
+function getChatUid()  { return window._currentUser ? window._currentUser.uid : null; }
+function timeStr()     { return new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
+function escH(s)       { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function getInitial(n) { return (n||"?").charAt(0).toUpperCase(); }
+function avatarColor(name) {
+  const colors = ["#075E54","#128C7E","#1d4ed8","#7c3aed","#dc2626","#d97706","#0891b2","#059669"];
+  let h = 0; for(let c of (name||"")) h = (h*31+c.charCodeAt(0))%999;
+  return colors[Math.abs(h) % colors.length];
+}
+
+// ─── Estado global ────────────────────────────────────────────
+let _activeChannel     = "geral";
+let _activeChannelName = "Grupo Geral Devs";
+let _activeChannelType = "group";
+let _channelUnsub      = null;
+let _allProfiles       = {};
+let _onlineUsers       = {};
+let _groupsList        = [];
+let _presenceInited    = false;
+let _chatInited        = false;
+
+// ─── Avatar ───────────────────────────────────────────────────
+function updateMyAvatar() {
+  const user    = window._currentUser;
+  const avatarEl = document.getElementById("waMyAvatar");
+  const bigAv    = document.getElementById("waProfileBigAv");
+  const profile  = user ? (_allProfiles[user.uid] || {}) : {};
+  if (!avatarEl) return;
+  if (profile.photoUrl) {
+    const img = `<img src="${profile.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    avatarEl.innerHTML = img;
+    if (bigAv) bigAv.innerHTML = img;
+  } else {
+    const initial = getInitial(getChatName());
+    const color   = avatarColor(getChatName());
+    avatarEl.textContent = initial; avatarEl.style.background = color;
+    if (bigAv) { bigAv.textContent = initial; bigAv.style.background = color; }
+  }
+}
+
+// ─── Lista de conversas ───────────────────────────────────────
+function renderConvoList() {
+  // Grupos
+  const groupList = document.getElementById("waGroupList");
+  if (groupList) {
+    groupList.innerHTML = _groupsList.map(g => {
+      const ch  = "group_" + g.id;
+      const sel = _activeChannel === ch ? " active" : "";
+      return `<div class="wa-convo-item${sel}" data-channel="${ch}" data-type="group" data-name="${escH(g.name)}">
+        <div class="wa-convo-avatar" style="background:${avatarColor(g.name)};font-size:.9rem">${getInitial(g.name)}</div>
+        <div class="wa-convo-info">
+          <div class="wa-convo-name">${escH(g.name)}</div>
+          <div class="wa-convo-last">${escH(g.desc||"Grupo de chat")}</div>
+        </div>
+      </div>`;
+    }).join("");
+    groupList.querySelectorAll(".wa-convo-item").forEach(el =>
+      el.addEventListener("click", () => switchChannel(el.dataset.channel, el.dataset.name, el.dataset.type))
+    );
+  }
+  // Usuários online
+  const userList = document.getElementById("waUserList");
+  if (userList) {
+    const myUid  = getChatUid();
+    const others = Object.entries(_onlineUsers).filter(([uid]) => uid !== myUid);
+    if (!others.length) {
+      userList.innerHTML = `<div style="padding:.6rem 1rem;font-size:.75rem;color:var(--text-muted)">Nenhum outro usuário online</div>`;
+    } else {
+      userList.innerHTML = others.map(([uid, name]) => {
+        const ch  = "dm_" + uid;
+        const sel = _activeChannel === ch ? " active" : "";
+        return `<div class="wa-convo-item${sel}" data-channel="${ch}" data-type="dm" data-name="${escH(name)}">
+          <div class="wa-convo-avatar" style="background:${avatarColor(name)}">${getInitial(name)}</div>
+          <div class="wa-convo-info">
+            <div class="wa-convo-name">${escH(name)}</div>
+            <div class="wa-convo-last" style="color:var(--green)"><i class="fas fa-circle" style="font-size:.5rem"></i> online</div>
+          </div>
+        </div>`;
+      }).join("");
+      userList.querySelectorAll(".wa-convo-item").forEach(el =>
+        el.addEventListener("click", () => switchChannel(el.dataset.channel, el.dataset.name, el.dataset.type))
+      );
+    }
+  }
+}
+
+// ─── Trocar canal ─────────────────────────────────────────────
+function switchChannel(channel, name, type) {
+  // 1. Cancelar listener anterior
+  if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
+
+  // 2. Atualizar estado
+  _activeChannel     = channel;
+  _activeChannelName = name;
+  _activeChannelType = type;
+
+  // 3. Visual: marcar ativo na sidebar
+  chatDiv.querySelectorAll(".wa-convo-item").forEach(el => el.classList.remove("active"));
+  const found = chatDiv.querySelector(`.wa-convo-item[data-channel="${channel}"]`);
+  if (found) found.classList.add("active");
+
+  // 4. Atualizar header
+  const headerName = document.getElementById("waChatHeaderName");
+  const headerAv   = document.getElementById("waChatHeaderAv");
+  const headerSub  = document.getElementById("waChatHeaderSub");
+  if (headerName) headerName.textContent = name;
+  if (headerAv) {
+    headerAv.textContent   = type === "group" ? "👥" : getInitial(name);
+    headerAv.style.background = type === "group" ? "#075E54" : avatarColor(name);
+  }
+  if (headerSub) headerSub.textContent = type === "group"
+    ? `${Object.keys(_onlineUsers).length} online` : "Conversa privada";
+
+  // 5. Limpar área de mensagens
+  const area = document.getElementById("waMsgsArea");
+  if (area) area.innerHTML = `<div class="bubble bubble-system">🔄 Carregando mensagens...</div>`;
+
+  // 6. Registrar novo listener — captura a referência correta do canal
+  const capturedChannel = channel;
+  const renderForThis = (msgs) => {
+    // Ignorar se o canal já mudou
+    if (_activeChannel !== capturedChannel) return;
+    renderWaMsgs(msgs, area);
+  };
+
+  if (channel === "geral") {
+    if (window._fbChatListen) _channelUnsub = window._fbChatListen(renderForThis);
+  } else {
+    if (window._fbChannelListen) _channelUnsub = window._fbChannelListen(channel, renderForThis);
+  }
+
+  // 7. Mobile: mostrar área de chat
+  const shell = chatDiv.querySelector(".wa-shell");
+  if (shell) shell.classList.add("wa-chat-open");
+}
+
+// ─── Renderizar mensagens ─────────────────────────────────────
+function renderWaMsgs(msgs, area) {
+  if (!area) return;
+  const myUid  = getChatUid();
+  const myName = getChatName();
+
+  if (!msgs || !msgs.length) {
+    area.innerHTML = `<div class="bubble bubble-system">👋 Nenhuma mensagem ainda. Seja o primeiro!</div>`;
+    return;
+  }
+
+  let html = "", lastDate = "";
+  msgs.forEach(m => {
+    const d       = m.ts ? new Date(m.ts) : new Date();
+    const dateStr = d.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit",year:"numeric"});
+    if (dateStr !== lastDate) {
+      html += `<div class="wa-date-sep"><span>${dateStr}</span></div>`;
+      lastDate = dateStr;
+    }
+    if (m.isSystem) { html += `<div class="bubble bubble-system">${escH(m.text)}</div>`; return; }
+
+    const isMe    = myUid && m.uid ? m.uid === myUid : m.name === myName;
+    const safeName = escH(m.name || "Anônimo");
+    const safeText = escH(m.text || "");
+    const profile  = (myUid && _allProfiles[m.uid]) || Object.values(_allProfiles).find(p => p.name === m.name) || {};
+    const avBg     = avatarColor(m.name || "");
+    const avInner  = profile.photoUrl
+      ? `<img src="${profile.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+      : `<span>${getInitial(m.name)}</span>`;
+    const av = `<div class="wa-msg-avatar" style="background:${avBg}">${avInner}</div>`;
+    const mediaHtml = m.mediaUrl
+      ? (m.mediaUrl.startsWith("data:video")
+          ? `<video src="${m.mediaUrl}" controls style="max-width:220px;border-radius:10px;margin-top:6px;display:block"></video>`
+          : `<img src="${m.mediaUrl}" alt="mídia" style="max-width:220px;border-radius:10px;margin-top:6px;display:block;cursor:pointer" onclick="window.open(this.src,'_blank')">`)
+      : "";
+
+    html += `<div class="wa-msg-row ${isMe ? "wa-msg-me" : "wa-msg-other"}">
+      ${!isMe ? av : ""}
+      <div class="wa-bubble ${isMe ? "wa-bubble-me" : "wa-bubble-other"}">
+        ${!isMe ? `<div class="wa-bubble-name" style="color:${avBg}">${safeName}</div>` : ""}
+        ${mediaHtml}
+        ${m.text ? `<div class="wa-bubble-text">${m.isSticker ? `<span style="font-size:2rem">${safeText}</span>` : safeText}</div>` : ""}
+        <div class="wa-bubble-time">${m.time||""} ${isMe ? "<i class='fas fa-check-double' style='color:#34d058;font-size:.55rem'></i>" : ""}</div>
+      </div>
+      ${isMe ? av : ""}
+    </div>`;
+  });
+
+  area.innerHTML = html;
+  area.scrollTop = area.scrollHeight;
+
+  // Preview na sidebar (só para o geral)
+  if (_activeChannel === "geral") {
+    const last = msgs[msgs.length - 1];
+    if (last) {
+      const lastEl     = document.getElementById("lastMsgGeral");
+      const lastTimeEl = document.getElementById("lastTimeGeral");
+      if (lastEl)     lastEl.textContent = (last.name || "") + ": " + (last.text || "📷 mídia").substring(0, 28);
+      if (lastTimeEl) lastTimeEl.textContent = last.time || "";
+    }
+  }
+}
+
+// ─── Enviar mensagem ──────────────────────────────────────────
+async function waSend(text, mediaUrl = null, isSticker = false) {
+  const msg = {
+    name:      getChatName(),
+    uid:       getChatUid(),
+    text:      text || "",
+    mediaUrl:  mediaUrl || null,
+    time:      timeStr(),
+    ts:        Date.now(),
+    isSticker: isSticker || false
+  };
+  try {
+    if (_activeChannel === "geral") {
+      if (window._fbChatSend) await window._fbChatSend(msg);
+    } else {
+      if (window._fbChannelSend) await window._fbChannelSend(_activeChannel, msg);
+    }
+  } catch(e) { alert("Erro ao enviar: " + e.message); }
+}
+
+// ─── Presença ─────────────────────────────────────────────────
+function initWaPresence() {
+  if (_presenceInited) return;
+  const user = window._currentUser;
+  if (!user || !window._fbPresenceSet) return;
+  _presenceInited = true;
+
+  window._fbPresenceSet(user.uid, getChatName());
+
+  if (window._fbPresenceListen) {
+    window._fbPresenceListen(online => {
+      _onlineUsers = online;
+      renderConvoList();
+      const sub = document.getElementById("waChatHeaderSub");
+      if (sub && _activeChannelType === "group")
+        sub.textContent = `${Object.keys(online).length} online`;
+    });
+  }
+  if (window._fbAllProfilesListen) {
+    window._fbAllProfilesListen(profiles => {
+      _allProfiles = profiles;
+      updateMyAvatar();
+      renderConvoList();
+    });
+  }
+  if (window._fbGroupsListen) {
+    window._fbGroupsListen(groups => {
+      _groupsList = groups;
+      renderConvoList();
+    });
+  }
+  setInterval(() => {
+    if (window._currentUser && window._fbPresenceSet)
+      window._fbPresenceSet(window._currentUser.uid, getChatName());
+  }, 60000);
+}
+
+// ─── Inicialização ────────────────────────────────────────────
+function initWaChat() {
+  if (!window._fbChatListen) {
+    window.addEventListener('firebase-ready', initWaChat, { once: true });
+    return;
+  }
+  if (!_chatInited) {
+    _chatInited = true;
+    switchChannel("geral", "Grupo Geral Devs", "group");
+  }
+  // Iniciar presença se usuário já estiver logado
+  if (window._currentUser) initWaPresence();
+}
+if (window._fbChatListen) initWaChat();
+else window.addEventListener('firebase-ready', initWaChat, { once: true });
+
+// ─── Emojis ───────────────────────────────────────────────────
+const waEmojiGrid = chatDiv.querySelector("#waEmojiGrid");
+ALL_EMOJIS.forEach(em => {
+  const btn = document.createElement("button");
+  btn.textContent = em; btn.className = "wa-emoji-btn";
+  btn.addEventListener("click", () => { const inp = document.getElementById("waInput"); inp.value += em; inp.focus(); });
+  waEmojiGrid.appendChild(btn);
+});
+chatDiv.querySelector("#waEmojiToggle").addEventListener("click", () => {
+  const p = document.getElementById("waEmojiPanel");
+  p.style.display = p.style.display === "none" ? "block" : "none";
+});
+
+// ─── Envio por botão e Enter ──────────────────────────────────
+chatDiv.querySelector("#waSendBtn").addEventListener("click", async () => {
+  const inp = document.getElementById("waInput");
+  const text = inp.value.trim(); if (!text) return;
+  inp.value = ""; inp.style.height = "auto";
+  document.getElementById("waEmojiPanel").style.display = "none";
+  await waSend(text);
+});
+chatDiv.querySelector("#waInput").addEventListener("keydown", async (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    const text = e.target.value.trim(); if (!text) return;
+    e.target.value = ""; e.target.style.height = "auto";
+    document.getElementById("waEmojiPanel").style.display = "none";
+    await waSend(text);
+  }
+});
+chatDiv.querySelector("#waInput").addEventListener("input", function() {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
+
+// ─── Mídia ────────────────────────────────────────────────────
+chatDiv.querySelector("#waMediaInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const isVideo = file.type.startsWith("video/");
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    await waSend(isVideo ? "🎬 Vídeo compartilhado" : "📷 Imagem compartilhada", ev.target.result);
+  };
+  reader.readAsDataURL(file); e.target.value = "";
+});
+
+// ─── Botão voltar mobile ──────────────────────────────────────
+chatDiv.querySelector("#waBackBtn").addEventListener("click", () => {
+  chatDiv.querySelector(".wa-shell").classList.remove("wa-chat-open");
+});
+
+// ─── Perfil ───────────────────────────────────────────────────
+chatDiv.querySelector("#waMyAvatar").addEventListener("click", () => {
+  const panel = document.getElementById("waProfilePanel");
+  panel.style.display = panel.style.display === "none" ? "flex" : "none";
+  const user = window._currentUser;
+  if (user) {
+    document.getElementById("waProfileName").value = user.displayName || "";
+    document.getElementById("waProfileEmail").textContent = user.email || "";
+    const p = _allProfiles[user.uid] || {};
+    document.getElementById("waProfileBio").value = p.bio || "";
+  }
+  updateMyAvatar();
+});
+chatDiv.querySelector("#closeProfileBtn").addEventListener("click", () => {
+  document.getElementById("waProfilePanel").style.display = "none";
+});
+chatDiv.querySelector("#waProfileNameSave").addEventListener("click", async () => {
+  const name = document.getElementById("waProfileName").value.trim(); if (!name) return;
+  if (window._fbUpdateDisplayName) await window._fbUpdateDisplayName(name);
+  const u = window._currentUser;
+  if (u && window._fbProfileSave) { const p = _allProfiles[u.uid]||{}; await window._fbProfileSave(u.uid, {...p, name}); }
+  document.getElementById("waProfilePanel").style.display = "none";
+  const nameEl = document.getElementById("userDisplayName"); if (nameEl) nameEl.textContent = name;
+  updateMyAvatar(); alert("✅ Nome atualizado!");
+});
+chatDiv.querySelector("#waProfileBioSave").addEventListener("click", async () => {
+  const bio = document.getElementById("waProfileBio").value.trim();
+  const u = window._currentUser; if (!u || !window._fbProfileSave) return;
+  const p = _allProfiles[u.uid]||{}; await window._fbProfileSave(u.uid, {...p, bio}); alert("✅ Bio salva!");
+});
+chatDiv.querySelector("#waAvatarInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; const u = window._currentUser; if (!file || !u) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const p = _allProfiles[u.uid]||{};
+    if (window._fbProfileSave) await window._fbProfileSave(u.uid, {...p, photoUrl: ev.target.result});
+    updateMyAvatar();
+  };
+  reader.readAsDataURL(file); e.target.value = "";
+});
+
+// ─── Grupos ───────────────────────────────────────────────────
+chatDiv.querySelector("#newGroupBtn").addEventListener("click", () => {
+  document.getElementById("newGroupModal").style.display = "flex";
+});
+chatDiv.querySelector("#closeGroupModal").addEventListener("click", () => {
+  document.getElementById("newGroupModal").style.display = "none";
+});
+chatDiv.querySelector("#createGroupBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newGroupName").value.trim();
+  const desc = document.getElementById("newGroupDesc").value.trim();
+  if (!name) { alert("Digite o nome do grupo!"); return; }
+  if (!window._fbGroupCreate) { alert("Firebase não configurado."); return; }
+  await window._fbGroupCreate({ name, desc, creator: getChatName(), ts: Date.now() });
+  document.getElementById("newGroupModal").style.display = "none";
+  document.getElementById("newGroupName").value = "";
+  document.getElementById("newGroupDesc").value = "";
+});
+
+// ─── Configurações ────────────────────────────────────────────
+chatDiv.querySelector("#openSettingsBtn").addEventListener("click", () => {
+  const u = window._currentUser;
+  if (u) {
+    document.getElementById("settingsNameInput").value = u.displayName || "";
+    const p = _allProfiles[u.uid] || {};
+    document.getElementById("settingsBioInput").value = p.bio || "";
+  }
+  document.getElementById("settingsModal").style.display = "flex";
+});
+chatDiv.querySelector("#closeSettingsModal").addEventListener("click", () => {
+  document.getElementById("settingsModal").style.display = "none";
+});
+chatDiv.querySelector("#settingsNameSave").addEventListener("click", async () => {
+  const name = document.getElementById("settingsNameInput").value.trim();
+  const fb   = document.getElementById("settingsNameFeedback");
+  if (!name) { fb.textContent = "Digite um nome."; fb.style.color = "#ef4444"; return; }
+  try {
+    if (window._fbUpdateDisplayName) await window._fbUpdateDisplayName(name);
+    const u = window._currentUser;
+    if (u && window._fbProfileSave) { const p = _allProfiles[u.uid]||{}; await window._fbProfileSave(u.uid, {...p, name}); }
+    const nameEl = document.getElementById("userDisplayName"); if (nameEl) nameEl.textContent = name;
+    fb.textContent = "✅ Nome alterado!"; fb.style.color = "#25D366"; updateMyAvatar();
+    setTimeout(() => fb.textContent = "", 3000);
+  } catch(e) { fb.textContent = "Erro: " + e.message; fb.style.color = "#ef4444"; }
+});
+chatDiv.querySelector("#settingsBioSave").addEventListener("click", async () => {
+  const bio = document.getElementById("settingsBioInput").value.trim();
+  const u = window._currentUser; if (!u || !window._fbProfileSave) return;
+  const p = _allProfiles[u.uid]||{}; await window._fbProfileSave(u.uid, {...p, bio}); alert("✅ Recado salvo!");
+});
+["newGroupModal","settingsModal"].forEach(id => {
+  chatDiv.querySelector("#"+id)?.addEventListener("click", function(e) {
+    if (e.target === this) this.style.display = "none";
+  });
+});
+
+// ─── Pesquisa na sidebar ──────────────────────────────────────
+chatDiv.querySelector("#waSearchInput").addEventListener("input", function() {
+  const q = this.value.toLowerCase();
+  chatDiv.querySelectorAll(".wa-convo-item").forEach(el => {
+    el.style.display = el.dataset.name?.toLowerCase().includes(q) ? "" : "none";
+  });
+});
+
+window.addEventListener('firebase-ready', () => setTimeout(updateMyAvatar, 500));
+
+
+
+// ---- PROMPT LAB TAB ----
+addTabBtn("promptlab","fas fa-microchip","CodePrompt IA");
+const promptDiv = document.createElement("div");
+promptDiv.className = "tab-content";
+promptDiv.id = "tab-promptlab";
+promptDiv.innerHTML = `
+  <div class="grid-2">
+    <div class="card">
+      <h3><i class="fas fa-terminal"></i> CodePrompt com IA</h3>
+      <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:1rem">Cole seu código ou envie uma foto. A IA irá analisar e corrigir.</p>
+      <label>Linguagem</label>
+      <select id="promptLang" style="width:100%;margin-bottom:.8rem">
+        <option>HTML</option><option>CSS</option><option>JavaScript</option>
+        <option>Python</option><option>Java</option><option>PHP</option><option>Outro</option>
+      </select>
+      <label>Seu código</label>
+      <textarea class="prompt-area" id="promptCode" placeholder="Cole seu código aqui..."></textarea>
+      <label style="margin-top:1rem">📷 Ou envie foto do código</label>
+      <div class="img-upload-zone" id="imgZone">
+        <i class="fas fa-camera" style="font-size:2rem;margin-bottom:.5rem"></i><br>
+        Clique para selecionar imagem com código
+        <input type="file" accept="image/*" id="promptImgInput" style="display:none">
+        <div id="imgPreview"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
+        <button class="btn btn-green" id="runPromptBtn"><i class="fas fa-magic"></i> Analisar com IA</button>
+        <button class="btn btn-outline" id="clearPromptBtn"><i class="fas fa-trash"></i> Limpar</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3><i class="fas fa-robot"></i> Análise da IA</h3>
+      <div class="prompt-output" id="promptOutput">// A análise do seu código aparecerá aqui...\n// Cole código ou envie uma imagem e clique em "Analisar com IA"</div>
+    </div>
+  </div>
+`;
+main.appendChild(promptDiv);
+
+let promptImageBase64 = null;
+let promptImageMime = null;
+const imgZone = promptDiv.querySelector("#imgZone");
+const promptImgInput = promptDiv.querySelector("#promptImgInput");
+imgZone.addEventListener("click", () => promptImgInput.click());
+promptImgInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    promptImageBase64 = ev.target.result.split(",")[1];
+    promptImageMime = file.type;
+    imgZone.classList.add("has-image");
+    promptDiv.querySelector("#imgPreview").innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:180px;border-radius:12px;margin-top:8px">`;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = "";
+});
+promptDiv.querySelector("#clearPromptBtn").addEventListener("click", () => {
+  promptDiv.querySelector("#promptCode").value = "";
+  promptImageBase64 = null; promptImageMime = null;
+  imgZone.classList.remove("has-image");
+  promptDiv.querySelector("#imgPreview").innerHTML = "";
+  promptDiv.querySelector("#promptOutput").textContent = "// Limpo. Pronto para nova análise.";
+});
+promptDiv.querySelector("#runPromptBtn").addEventListener("click", async () => {
+  const code = promptDiv.querySelector("#promptCode").value.trim();
+  const lang = promptDiv.querySelector("#promptLang").value;
+  const output = promptDiv.querySelector("#promptOutput");
+  if(!code && !promptImageBase64) { output.textContent = "⚠️ Cole algum código ou envie uma imagem."; return; }
+  output.innerHTML = '<span class="loading-dots">🤖 Analisando seu código</span>';
+  try {
+    let userContent;
+    if(promptImageBase64) {
+      userContent = [
+        { type:"image", source:{type:"base64",media_type:promptImageMime,data:promptImageBase64} },
+        { type:"text", text:`Analise o código ${lang} na imagem. Identifique erros e sugira correções. Responda em português.${code?"\n\nCódigo adicional:\n"+code:""}` }
+      ];
+    } else {
+      userContent = `Analise o seguinte código ${lang} e:\n1. Identifique TODOS os erros\n2. Explique cada problema\n3. Mostre o código corrigido\n4. Dê dicas de melhoria\n\nCódigo:\n\`\`\`${lang.toLowerCase()}\n${code}\n\`\`\`\n\nResponda em português.`;
+    }
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:userContent}]})
+    });
+    const data = await response.json();
+    output.textContent = data.content?.map(b=>b.text||"").join("\n") || "Erro ao obter resposta.";
+  } catch(err) {
+    output.textContent = "❌ Erro ao chamar a IA: " + err.message;
+  }
+});
+
+// ---- FEEDBACK TAB ----
+addTabBtn("feedback","fas fa-star","Feedback");
+const feedbackDiv = document.createElement("div");
+feedbackDiv.className = "tab-content";
+feedbackDiv.id = "tab-feedback";
+feedbackDiv.innerHTML = `
+  <div id="fbFirebaseBanner" class="fb-status-banner">
+    ⚠️ Firebase não configurado. Configure o firebaseConfig no topo do arquivo HTML.
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3><i class="fas fa-star"></i> Deixe seu Feedback</h3>
+      <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:1rem">Sua opinião nos ajuda a melhorar o FICR CodeLab!</p>
+      <label>Nome</label>
+      <input class="input-line" id="fbName" placeholder="Seu nome" maxlength="50">
+      <label>E-mail (opcional)</label>
+      <input class="input-line" id="fbEmail" type="email" placeholder="seu@email.com">
+      <label>Categoria</label>
+      <select id="fbCategory" style="width:100%">
+        <option>💡 Sugestão de melhoria</option>
+        <option>⭐ Elogio</option>
+        <option>🐛 Reportar problema</option>
+        <option>📚 Conteúdo</option>
+        <option>🎨 Design/Interface</option>
+        <option>💬 Chat</option>
+        <option>🤖 IA/CodePrompt</option>
+      </select>
+      <label>Avaliação geral</label>
+      <div class="stars-row" id="starsRow">
+        ${[1,2,3,4,5].map(n=>`<span class="star" data-v="${n}">★</span>`).join("")}
+      </div>
+      <div id="starsLabel" style="font-size:.78rem;color:var(--text-muted);margin-top:-4px;margin-bottom:.5rem"></div>
+      <label>Sua mensagem</label>
+      <textarea class="textarea-fb" id="fbMsg" placeholder="Conte-nos sua experiência..." maxlength="1000"></textarea>
+      <div style="font-size:.72rem;color:var(--text-muted);text-align:right;margin-top:2px" id="fbCharCount">0/1000</div>
+      <label>Como nos encontrou?</label>
+      <select id="fbSource" style="width:100%">
+        <option>Professor(a)</option>
+        <option>Colega de turma</option>
+        <option>Redes sociais</option>
+        <option>Site da FICR</option>
+        <option>Outro</option>
+      </select>
+      <button class="btn btn-green" id="sendFbBtn" style="margin-top:1.2rem;width:100%;justify-content:center">
+        <i class="fas fa-paper-plane"></i> Enviar Feedback
+      </button>
+      <div id="fbSuccess" style="display:none;background:rgba(37,211,102,.1);border:1px solid var(--green);border-radius:12px;padding:.8rem;margin-top:.8rem;text-align:center;color:var(--green)">
+        ✅ Feedback enviado! Obrigado!
+      </div>
+    </div>
+    <div class="card">
+      <h3><i class="fas fa-chart-bar"></i> Resumo dos Feedbacks</h3>
+      <div id="fbStats" style="margin-bottom:1rem"></div>
+      <h4 style="font-size:.88rem;margin-bottom:.8rem;color:var(--text-muted)">Feedbacks recentes</h4>
+      <div id="fbList" style="max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem"></div>
+    </div>
+  </div>
+`;
+main.appendChild(feedbackDiv);
+
+let selectedStars = 0;
+const starsLabels = ["","😞 Péssimo","😕 Ruim","😐 Regular","😊 Bom","🌟 Excelente!"];
+feedbackDiv.querySelectorAll(".star").forEach(star => {
+  star.addEventListener("mouseover", function() {
+    const v = parseInt(this.dataset.v);
+    feedbackDiv.querySelectorAll(".star").forEach((s,i) => s.classList.toggle("lit", i<v));
+  });
+  star.addEventListener("mouseout", () => {
+    feedbackDiv.querySelectorAll(".star").forEach((s,i) => s.classList.toggle("lit", i<selectedStars));
+  });
+  star.addEventListener("click", function() {
+    selectedStars = parseInt(this.dataset.v);
+    feedbackDiv.querySelector("#starsLabel").textContent = starsLabels[selectedStars];
+  });
+});
+feedbackDiv.querySelector("#fbMsg").addEventListener("input", function() {
+  feedbackDiv.querySelector("#fbCharCount").textContent = this.value.length + "/1000";
+});
+
+function renderFeedbacks(list) {
+  const fbList = feedbackDiv.querySelector("#fbList");
+  const fbStats = feedbackDiv.querySelector("#fbStats");
+  const banner = feedbackDiv.querySelector("#fbFirebaseBanner");
+  if(banner) banner.style.display = "none";
+  if(!list || list.length===0) {
+    fbList.innerHTML = `<p style="color:var(--text-muted);font-size:.83rem;text-align:center">Seja o primeiro a deixar um feedback! 🌟</p>`;
+    fbStats.innerHTML = "";
+    return;
+  }
+  const avg = (list.reduce((a,b)=>a+(b.stars||0),0)/list.length).toFixed(1);
+  fbStats.innerHTML = `
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.8rem">
+      <div style="font-size:2.5rem;font-weight:800;color:var(--yellow)">${avg}</div>
+      <div>
+        <div style="color:var(--yellow);font-size:1.2rem">${"★".repeat(Math.round(avg))}${"☆".repeat(5-Math.round(avg))}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">${list.length} feedback${list.length>1?"s":""}</div>
+      </div>
+    </div>
+    ${[5,4,3,2,1].map(n=>{
+      const count = list.filter(f=>f.stars===n).length;
+      const pct = list.length?(count/list.length*100):0;
+      return `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:4px">
+        <span style="font-size:.72rem;width:12px;color:var(--yellow)">${n}★</span>
+        <div class="progress-bar-outer" style="flex:1"><div class="progress-bar-inner" style="width:${pct}%"></div></div>
+        <span style="font-size:.7rem;color:var(--text-muted);width:24px">${count}</span>
+      </div>`;
+    }).join("")}
+  `;
+  fbList.innerHTML = list.slice().reverse().map(f=>`
+    <div class="fb-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:4px">
+        <strong style="font-size:.88rem">${f.name||"Anônimo"}</strong>
+        <span class="fb-tag">${f.category||""}</span>
+      </div>
+      <div class="fb-star-display">${"★".repeat(f.stars||0)}${"☆".repeat(5-(f.stars||0))}</div>
+      <p style="font-size:.82rem;color:var(--text-muted);margin:.4rem 0">${f.msg||""}</p>
+      <div style="font-size:.68rem;color:var(--border)">${f.time||""}</div>
+    </div>
+  `).join("");
+}
+
+function startFeedbackListener() {
+  if(window._fbFeedbackListen) {
+    window._fbFeedbackListen(list => renderFeedbacks(list));
+  } else {
+    window.addEventListener('firebase-ready', () => { window._fbFeedbackListen(list => renderFeedbacks(list)); }, { once:true });
+    setTimeout(() => { if(!window._fbFeedbackListen) { const b=feedbackDiv.querySelector("#fbFirebaseBanner"); if(b) b.style.display="block"; } }, 5000);
+  }
+}
+
+feedbackDiv.querySelector("#sendFbBtn").addEventListener("click", async () => {
+  const msg = feedbackDiv.querySelector("#fbMsg").value.trim();
+  if(!msg) { alert("Digite uma mensagem!"); return; }
+  if(!selectedStars) { alert("Selecione uma avaliação!"); return; }
+  if(!window._fbFeedbackSend) { alert("Firebase não configurado."); return; }
+  try {
+    await window._fbFeedbackSend({
+      name: feedbackDiv.querySelector("#fbName").value.trim() || "Anônimo",
+      email: feedbackDiv.querySelector("#fbEmail").value.trim(),
+      category: feedbackDiv.querySelector("#fbCategory").value,
+      stars: selectedStars,
+      msg,
+      source: feedbackDiv.querySelector("#fbSource").value,
+      time: new Date().toLocaleString("pt-BR")
+    });
+    feedbackDiv.querySelector("#fbSuccess").style.display = "block";
+    feedbackDiv.querySelector("#fbMsg").value = "";
+    feedbackDiv.querySelector("#fbCharCount").textContent = "0/1000";
+    feedbackDiv.querySelector("#fbName").value = "";
+    selectedStars = 0;
+    feedbackDiv.querySelectorAll(".star").forEach(s=>s.classList.remove("lit"));
+    feedbackDiv.querySelector("#starsLabel").textContent = "";
+    setTimeout(()=>feedbackDiv.querySelector("#fbSuccess").style.display="none",3000);
+  } catch(e) { alert("Erro: " + e.message); }
+});
+
+startFeedbackListener();
+
+// ============================================================
+// QUIZ
+// ============================================================
+function openQuiz(langId) {
+  const lang = LANGS.find(l=>l.id===langId);
+  if(!lang) return;
+  document.getElementById("quizModalTitle").innerHTML = `<i class="fas fa-brain"></i> Quiz: ${lang.name}`;
+  const body = document.getElementById("quizModalBody");
+  const result = document.getElementById("quizModalResult");
+  result.innerHTML = "";
+  let html = `<p style="color:var(--text-muted);font-size:.83rem;margin-bottom:1rem">Selecione a resposta correta para cada pergunta</p>`;
+  lang.quiz.forEach((q,qi) => {
+    html += `<div class="q-item" data-qi="${qi}">
+      <div class="q-text">${qi+1}. ${q.p}</div>
+      <div class="opts">${q.opts.map((opt,oi)=>`<span class="opt" data-oi="${oi}">${opt}</span>`).join("")}</div>
+    </div>`;
+  });
+  body.innerHTML = html;
+  body.querySelectorAll(".opts").forEach(opts => {
+    opts.querySelectorAll(".opt").forEach(opt => {
+      opt.addEventListener("click", function() {
+        opts.querySelectorAll(".opt").forEach(o=>o.classList.remove("selected"));
+        this.classList.add("selected");
+        this.closest(".q-item").dataset.sel = this.dataset.oi;
+      });
+    });
+  });
+  document.getElementById("quizModal").classList.add("open");
+  document.getElementById("quizSubmitBtn").onclick = () => gradeQuiz(lang);
+  document.getElementById("quizResetBtn").onclick = () => openQuiz(langId);
+}
+
+function gradeQuiz(lang) {
+  const body = document.getElementById("quizModalBody");
+  const result = document.getElementById("quizModalResult");
+  let acertos = 0;
+  lang.quiz.forEach((q,qi) => {
+    const item = body.querySelector(`.q-item[data-qi="${qi}"]`);
+    const sel = item?.dataset.sel;
+    const opts = item?.querySelectorAll(".opt");
+    if(opts) {
+      opts.forEach((opt,oi) => {
+        opt.classList.remove("selected");
+        if(oi===q.c) opt.classList.add("correct");
+        else if(sel!==undefined && parseInt(sel)===oi) opt.classList.add("wrong");
+      });
+    }
+    if(sel!==undefined && parseInt(sel)===q.c) acertos++;
+  });
+  const pct = (acertos/lang.quiz.length*100).toFixed(0);
+  const emoji = acertos===lang.quiz.length?"🏆":acertos>=lang.quiz.length*0.7?"🎯":"📘";
+  result.innerHTML = `<div class="quiz-result">${emoji} ${acertos}/${lang.quiz.length} corretas — ${pct}% — ${(acertos/lang.quiz.length*10).toFixed(1)}/10<br><span style="font-size:.8rem;color:var(--text-muted)">${acertos===lang.quiz.length?"Expert! Parabéns! 🌟":acertos>=lang.quiz.length*0.7?"Muito bem! Continue assim!":"Pratique mais e tente novamente!"}</span></div>`;
+}
+
+// Close quiz modal outside click
+document.getElementById("quizModal").addEventListener("click", function(e) {
+  if(e.target===this) this.classList.remove("open");
+});
+
+// ============================================================
+// AUTH — LOGIN / REGISTRO / ESTADO DO USUÁRIO
+// ============================================================
+window._currentUser = null;
+
+function showAuthTab(tab) {
+  document.getElementById("authLogin").style.display    = tab==="login"    ? "block" : "none";
+  document.getElementById("authRegister").style.display = tab==="register" ? "block" : "none";
+  document.getElementById("tabLoginBtn").classList.toggle("active", tab==="login");
+  document.getElementById("tabRegBtn").classList.toggle("active",   tab==="register");
+  clearAuthMsg();
+}
+
+function showAuthMsg(msg, type="error") {
+  const el = document.getElementById("authMsg");
+  el.textContent = msg;
+  el.className = "auth-msg " + type;
+  el.style.display = "block";
+}
+function clearAuthMsg() {
+  const el = document.getElementById("authMsg");
+  if(el) { el.style.display = "none"; el.textContent = ""; }
+}
+
+function setUserBar(user) {
+  const bar = document.getElementById("userBar");
+  if(!user) { bar.style.display = "none"; return; }
+  bar.style.display = "flex";
+  const name = user.displayName || user.email.split("@")[0];
+  document.getElementById("userDisplayName").textContent = name;
+  document.getElementById("userEmail").textContent = user.email;
+  document.getElementById("userAvatar").textContent = name.charAt(0).toUpperCase();
+  const vbadge = document.getElementById("verifyBadge");
+  if(user.emailVerified) {
+    vbadge.textContent = "✅ Verificado";
+    vbadge.className = "verify-badge ok";
+  } else {
+    vbadge.textContent = "📧 E-mail não verificado";
+    vbadge.className = "verify-badge";
+    vbadge.title = "Clique para reenviar o e-mail";
+    vbadge.style.cursor = "pointer";
+    vbadge.onclick = async () => {
+      if(window._fbAuth) { await window._fbAuth.resendVerification(); showAuthMsg("E-mail reenviado! Verifique sua caixa de entrada.", "success"); }
+    };
+  }
+  // update chat badge
+  const cb = document.getElementById("chatUserBadge");
+  const cn = document.getElementById("chatUserBadgeName");
+  if(cb && cn) { cb.style.display = "flex"; cn.textContent = name; }
+}
+
+window.doLogout = async function() {
+  if(window._fbAuth) await window._fbAuth.logout();
+};
+
+function initAuth() {
+  if(!window._fbAuth) {
+    window.addEventListener('firebase-ready', initAuth, { once: true });
+    return;
+  }
+
+  // Auth state listener
+  window._fbAuth.onAuthChange(user => {
+    window._currentUser = user;
+    if(user) {
+      document.getElementById("authOverlay").style.display = "none";
+      setUserBar(user);
+      // Inicia presença/listeners do chat agora que o usuário está logado
+      if (typeof initWaPresence === 'function') setTimeout(initWaPresence, 100);
+    } else {
+      document.getElementById("authOverlay").style.display = "flex";
+      document.getElementById("userBar").style.display = "none";
+      window._currentUser = null;
+      const cb = document.getElementById("chatUserBadge");
+      if(cb) cb.style.display = "none";
+    }
+  });
+
+  // Login button
+  document.getElementById("loginBtn").addEventListener("click", async () => {
+    const email = document.getElementById("loginEmail").value.trim();
+    const pass  = document.getElementById("loginPassword").value;
+    if(!email || !pass) { showAuthMsg("Preencha e-mail e senha."); return; }
+    const btn = document.getElementById("loginBtn");
+    btn.disabled = true; btn.textContent = "Entrando...";
+    clearAuthMsg();
+    try {
+      await window._fbAuth.login(email, pass);
+      // onAuthChange will hide the overlay
+    } catch(e) {
+      const msgs = {
+        "auth/invalid-credential": "E-mail ou senha incorretos.",
+        "auth/user-not-found": "Usuário não encontrado.",
+        "auth/wrong-password": "Senha incorreta.",
+        "auth/too-many-requests": "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+        "auth/invalid-email": "E-mail inválido.",
+        "auth/configuration-not-found": "⚠️ Autenticação não configurada no Firebase. Ative o provedor E-mail/Senha em: Firebase Console → Authentication → Sign-in method.",
+        "auth/network-request-failed": "Sem conexão com a internet. Verifique sua rede.",
+        "auth/operation-not-allowed": "⚠️ Login por e-mail desativado. Ative em: Firebase Console → Authentication → Sign-in method → E-mail/Senha."
+      };
+      showAuthMsg(msgs[e.code] || "Erro ao entrar: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+    }
+  });
+
+  // Register button
+  document.getElementById("registerBtn").addEventListener("click", async () => {
+    const name  = document.getElementById("regName").value.trim();
+    const email = document.getElementById("regEmail").value.trim();
+    const pass  = document.getElementById("regPassword").value;
+    const pass2 = document.getElementById("regPassword2").value;
+    if(!name)  { showAuthMsg("Digite seu nome."); return; }
+    if(!email) { showAuthMsg("Digite seu e-mail."); return; }
+    if(pass.length < 6) { showAuthMsg("A senha deve ter pelo menos 6 caracteres."); return; }
+    if(pass !== pass2) { showAuthMsg("As senhas não coincidem."); return; }
+    const btn = document.getElementById("registerBtn");
+    btn.disabled = true; btn.textContent = "Criando conta...";
+    clearAuthMsg();
+    try {
+      await window._fbAuth.register(name, email, pass);
+      showAuthMsg("✅ Conta criada! Verifique seu e-mail antes de continuar.", "success");
+      // onAuthChange fires here — overlay stays open if not verified? no, let them in and show badge
+    } catch(e) {
+      const msgs = {
+        "auth/email-already-in-use": "Este e-mail já está cadastrado. Tente fazer login.",
+        "auth/invalid-email": "E-mail inválido. Verifique o formato.",
+        "auth/weak-password": "Senha fraca. Use ao menos 6 caracteres.",
+        "auth/configuration-not-found": "⚠️ Autenticação não configurada. Acesse: Firebase Console → Authentication → Sign-in method → Ative E-mail/Senha.",
+        "auth/network-request-failed": "Sem conexão com a internet. Verifique sua rede.",
+        "auth/operation-not-allowed": "⚠️ Cadastro por e-mail desativado. Ative em: Firebase Console → Authentication → Sign-in method → E-mail/Senha.",
+        "auth/admin-restricted-operation": "⚠️ Operação restrita. Ative o provedor E-mail/Senha no Firebase Console → Authentication → Sign-in method."
+      };
+      showAuthMsg(msgs[e.code] || "Erro ao criar conta: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-user-plus"></i> Criar conta';
+    }
+  });
+
+  // Enter key support on auth inputs
+  ["loginEmail","loginPassword"].forEach(id => {
+    document.getElementById(id)?.addEventListener("keydown", e => {
+      if(e.key === "Enter") document.getElementById("loginBtn").click();
+    });
+  });
+  ["regName","regEmail","regPassword","regPassword2"].forEach(id => {
+    document.getElementById(id)?.addEventListener("keydown", e => {
+      if(e.key === "Enter") document.getElementById("registerBtn").click();
+    });
+  });
+}
+
+// Start auth when firebase is ready
+if(window._fbAuth) { initAuth(); }
+else { window.addEventListener('firebase-ready', initAuth, { once: true }); }
+
+// ============================================================
+// HELPERS
+// ============================================================
+function escHtml(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+</script>
+</body>
+</html>
