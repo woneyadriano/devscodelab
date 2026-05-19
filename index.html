@@ -154,7 +154,7 @@
   // onProgress(percent) é chamado durante o upload (0–100)
   // 👇 Substitua com suas credenciais do Cloudinary (cloudinary.com → plano gratuito)
   const CLOUDINARY_CLOUD_NAME   = "dxmqasans";
-  const CLOUDINARY_UPLOAD_PRESET = "devs cod lab";
+  const CLOUDINARY_UPLOAD_PRESET = "devs_cod_lab";
 
   window._fbStorageUpload = (file, onProgress) => {
     return new Promise((resolve, reject) => {
@@ -1992,7 +1992,10 @@ window.viewActivity = function(id) {
   if(a.type==="image" && src) {
     body.innerHTML = `<img class="view-modal-img" src="${src}" alt="${a.title}">`;
   } else if(a.type==="pdf" && src) {
-    body.innerHTML = `<iframe class="view-modal-pdf" src="${src}"></iframe>`;
+    // Cloudinary bloqueia iframes diretos por CORS/CSP.
+    // Usamos o Google Docs Viewer como proxy para exibir o PDF inline.
+    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`;
+    body.innerHTML = `<iframe class="view-modal-pdf" src="${viewerUrl}"></iframe>`;
   } else {
     body.innerHTML = `<div class="no-preview"><i class="fas ${getTypeIcon(a.type)}"></i><div style="text-align:center"><strong>${a.title}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${a.type.toUpperCase()} · ${a.size}</span><br><span style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;display:block">Visualização inline não disponível para este tipo.<br>Clique em "Baixar" para abrir o arquivo.</span></div></div>`;
   }
@@ -2030,11 +2033,14 @@ window.downloadActivity = function(id) {
   if(!a) return;
   const exts = {pdf:".pdf", word:".docx", excel:".xlsx", image:".png"};
   const filename = a.title.replace(/[^a-zA-Z0-9\s]/g,"").substring(0,40) + (exts[a.type]||".file");
-  const src = a.url || a.dataUrl; // Firebase Storage URL ou fallback base64
+  let src = a.url || a.dataUrl;
 
   if(src) {
-    // Abre o arquivo — Firebase Storage URLs são servidas via CDN seguro (HTTPS)
-    // O atributo download funciona para mesma origem; para Storage abre nova aba
+    // Para URLs do Cloudinary, adiciona fl_attachment para forçar o download
+    // Isso instrui o Cloudinary a servir o arquivo com Content-Disposition: attachment
+    if(src.includes("cloudinary.com") && src.includes("/upload/")) {
+      src = src.replace("/upload/", "/upload/fl_attachment/");
+    }
     const link = document.createElement("a");
     link.href = src;
     link.target = "_blank";
