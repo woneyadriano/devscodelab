@@ -10,12 +10,13 @@
 <script type="module">
   import { initializeApp }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue, query, limitToLast }
+  import { getDatabase, ref, push, onValue, query, limitToLast, remove }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   import {
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
     sendEmailVerification, onAuthStateChanged, signOut, updateProfile
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
 
   const firebaseConfig = {
     apiKey:            "AIzaSyBBEWcgia5aMjPqLdGtuIhXvbDitb1ozFs",
@@ -28,9 +29,10 @@
     measurementId:     "G-CLFGTESNJN"
   };
 
-  const app  = initializeApp(firebaseConfig);
-  const db   = getDatabase(app);
-  const auth = getAuth(app);
+  const app     = initializeApp(firebaseConfig);
+  const db      = getDatabase(app);
+  const auth    = getAuth(app);
+
 
   // ── Chat (grupo geral) ──
   const chatRef = ref(db, 'ficr_chat');
@@ -127,6 +129,69 @@
     resendVerification: async () => {
       if (auth.currentUser) await sendEmailVerification(auth.currentUser);
     }
+  };
+
+  // ── Atividades (Realtime Database + Storage) ──
+  const activitiesRef = ref(db, 'ficr_activities');
+
+  // Salva metadados da atividade no Realtime Database
+  window._fbActivitiesSave = (activity) => push(activitiesRef, activity);
+
+  // Listener em tempo real — chama cb(list) sempre que o banco mudar
+  window._fbActivitiesListen = (cb) => {
+    onValue(activitiesRef, snap => {
+      const list = [];
+      snap.forEach(child => list.push({ id: child.key, ...child.val() }));
+      cb(list.reverse()); // mais recentes primeiro
+    });
+  };
+
+  // Remove metadados do banco
+  window._fbActivitiesDelete = (id) => remove(ref(db, 'ficr_activities/' + id));
+
+  // ── Cloudinary — upload de arquivo com progresso ──
+  // Retorna Promise<{ url, storagePath }>
+  // onProgress(percent) é chamado durante o upload (0–100)
+  // 👇 Substitua com suas credenciais do Cloudinary (cloudinary.com → plano gratuito)
+  const CLOUDINARY_CLOUD_NAME   = "dxmqasans";
+  const CLOUDINARY_UPLOAD_PRESET = "devs cod lab";
+
+  window._fbStorageUpload = (file, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (xhr.status === 200) {
+            resolve({ url: res.secure_url, storagePath: res.public_id });
+          } else {
+            reject(new Error(res.error?.message || "Erro no upload para Cloudinary"));
+          }
+        } catch(e) { reject(new Error("Resposta inválida do Cloudinary")); }
+      };
+
+      xhr.onerror = () => reject(new Error("Falha na conexão com Cloudinary"));
+      xhr.send(formData);
+    });
+  };
+
+  // Remoção via Cloudinary requer backend — remove só do banco por ora
+  window._fbStorageDelete = async (publicId) => {
+    if (!publicId) return;
+    // O arquivo permanece no Cloudinary mas é removido da listagem do site
+    console.log("Atividade removida do banco. Para remover o arquivo do Cloudinary, acesse o Media Library e delete o public_id:", publicId);
   };
 
   window._firebaseReady = true;
@@ -1581,33 +1646,26 @@ LANGS.forEach((lang, i) => {
 addTabBtn("activities","fas fa-book-open","📂 Atividades", false, "tab-activities");
 
 // Storage de atividades (localStorage simulado em memória)
-let ACTIVITIES = [
-  {
-    id:"act1", title:"Lista 01 — Estruturas HTML Semânticas", type:"pdf",
-    lang:"HTML", level:"init", desc:"Exercícios práticos sobre tags semânticas do HTML5: header, nav, main, article, section, footer. Inclui gabarito comentado.",
-    date:"15/05/2025", size:"320 KB", url:null, dataUrl:null
-  },
-  {
-    id:"act2", title:"Planilha de Avaliação — Notas e Médias", type:"excel",
-    lang:"Python", level:"inter", desc:"Planilha Excel com fórmulas prontas para calcular médias, situação dos alunos e gráfico de desempenho por turma.",
-    date:"18/05/2025", size:"45 KB", url:null, dataUrl:null
-  },
-  {
-    id:"act3", title:"Projeto Guiado — Sistema de Login com PHP", type:"word",
-    lang:"PHP", level:"inter", desc:"Documento Word com passo a passo completo para criar um sistema de login seguro com PHP 8, PDO e hash de senhas.",
-    date:"20/05/2025", size:"1.2 MB", url:null, dataUrl:null
-  },
-  {
-    id:"act4", title:"Desafio — Machine Learning com Scikit-Learn", type:"pdf",
-    lang:"IA & ML", level:"adv", desc:"Desafio prático de classificação usando Random Forest e SVM. Inclui dataset CSV e instruções para análise exploratória.",
-    date:"22/05/2025", size:"780 KB", url:null, dataUrl:null
-  },
-  {
-    id:"act5", title:"Exercício — Flexbox e Grid Layout", type:"word",
-    lang:"CSS", level:"init", desc:"Atividade prática com 10 exercícios de CSS moderno: Flexbox, Grid, variáveis CSS e animações. Com gabarito em ZIP.",
-    date:"25/05/2025", size:"540 KB", url:null, dataUrl:null
+// Atividades carregadas do Firebase em tempo real
+let ACTIVITIES = [];
+
+// Inicia listener assim que o Firebase estiver pronto
+function initActivitiesListener() {
+  if (!window._fbActivitiesListen) {
+    window.addEventListener('firebase-ready', initActivitiesListener, { once: true });
+    return;
   }
-];
+  window._fbActivitiesListen(list => {
+    ACTIVITIES = list;
+    renderActivities(
+      typeof currentFilter !== 'undefined' ? currentFilter : 'all',
+      document.querySelector('#actSearch')?.value || ''
+    );
+    renderStats();
+    updateImageGallery();
+  });
+}
+initActivitiesListener();
 
 const actDiv = document.createElement("div");
 actDiv.className = "tab-content";
@@ -1740,15 +1798,20 @@ function renderActivities(filterType="all", search="") {
       <div class="act-card-footer">
         <span class="act-card-date"><i class="fas fa-calendar-alt" style="margin-right:3px"></i>${a.date}${a.size?` · ${a.size}`:""}</span>
         <div class="act-card-btns">
-          ${a.type==="image" || a.dataUrl || a.url
+          ${a.url || a.dataUrl || a.type==="image"
             ? `<button class="act-mini-btn act-mini-btn-view" onclick="viewActivity('${a.id}')"><i class="fas fa-eye"></i> Ver</button>`
             : `<button class="act-mini-btn act-mini-btn-view" onclick="previewInfo('${a.id}')"><i class="fas fa-info-circle"></i> Info</button>`
           }
           <button class="act-mini-btn act-mini-btn-down" onclick="downloadActivity('${a.id}')">
             <i class="fas fa-download"></i> Baixar
           </button>
+          ${window._currentUser && (a.uploadedBy === window._currentUser.displayName || a.uploadedBy === window._currentUser.email)
+            ? `<button class="act-mini-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.25)" onclick="deleteActivity('${a.id}')"><i class="fas fa-trash"></i></button>`
+            : ''
+          }
         </div>
       </div>
+      ${a.uploadedBy ? `<div style="font-size:.65rem;color:var(--text-muted);margin-top:.4rem"><i class="fas fa-user" style="margin-right:3px;color:var(--purple)"></i>${a.uploadedBy}</div>` : ''}
     </div>
   `).join("");
 }
@@ -1823,45 +1886,98 @@ function handleFileSelected(file) {
   actUploadZone.classList.add("drag-over");
 }
 
-actDiv.querySelector("#actSendBtn").addEventListener("click", () => {
+actDiv.querySelector("#actSendBtn").addEventListener("click", async () => {
   const title = actDiv.querySelector("#actTitle").value.trim();
   if(!title) { alert("Digite o título da atividade!"); return; }
+
   const lang  = actDiv.querySelector("#actLang").value;
   const level = actDiv.querySelector("#actLevel").value;
   const desc  = actDiv.querySelector("#actDesc").value.trim() || "Atividade enviada pelo professor.";
   const type  = pendingFile ? pendingFileType : "pdf";
   const size  = pendingFile ? `${(pendingFile.size/1024).toFixed(0)} KB` : "—";
-  const newAct = {
-    id: "act"+Date.now(), title, type, lang, level, desc,
-    date: new Date().toLocaleDateString("pt-BR"),
-    size, url:null, dataUrl: pendingDataUrl || null
-  };
-  ACTIVITIES.unshift(newAct);
-  renderActivities(currentFilter, actDiv.querySelector("#actSearch").value);
-  renderStats();
-  updateImageGallery();
-  // Reset form
-  actDiv.querySelector("#actTitle").value = "";
-  actDiv.querySelector("#actDesc").value = "";
-  actDiv.querySelector("#actFilePreview").innerHTML = "";
-  actUploadZone.classList.remove("drag-over");
-  pendingFile = null; pendingDataUrl = null; pendingFileType = null;
-  actFileInput.value = "";
-  const success = actDiv.querySelector("#actSuccess");
-  success.style.display = "block";
-  setTimeout(()=>success.style.display="none",3000);
+
+  const btn = actDiv.querySelector("#actSendBtn");
+  btn.disabled = true;
+
+  try {
+    let fileUrl = null;
+    let storagePath = null;
+
+    if (pendingFile) {
+      // Mostra barra de progresso
+      const preview = actDiv.querySelector("#actFilePreview");
+      preview.innerHTML = `
+        <div style="margin-top:.5rem">
+          <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:4px">
+            <i class="fas fa-cloud-upload-alt" style="color:var(--purple)"></i>
+            Enviando para Firebase Storage<span class="loading-dots"></span>
+          </div>
+          <div style="background:var(--surface2);border-radius:40px;height:8px;overflow:hidden">
+            <div id="uploadProgressBar" style="height:100%;border-radius:40px;background:linear-gradient(90deg,#7c3aed,#8b5cf6);width:0%;transition:width .2s ease"></div>
+          </div>
+          <div id="uploadProgressPct" style="font-size:.68rem;color:var(--purple);margin-top:3px;text-align:right">0%</div>
+        </div>`;
+
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+      const result = await window._fbStorageUpload(pendingFile, (pct) => {
+        const bar = actDiv.querySelector("#uploadProgressBar");
+        const pctEl = actDiv.querySelector("#uploadProgressPct");
+        if (bar) bar.style.width = pct + "%";
+        if (pctEl) pctEl.textContent = pct + "%";
+      });
+
+      fileUrl = result.url;
+      storagePath = result.storagePath;
+    }
+
+    const newAct = {
+      title, type, lang, level, desc,
+      date: new Date().toLocaleDateString("pt-BR"),
+      size,
+      url: fileUrl || null,
+      storagePath: storagePath || null,
+      uploadedBy: window._currentUser?.displayName || window._currentUser?.email || "Anônimo",
+      uploadedAt: Date.now()
+    };
+
+    // Salva metadados no Realtime Database
+    // O listener _fbActivitiesListen vai atualizar a tela automaticamente
+    await window._fbActivitiesSave(newAct);
+
+    // Reset form
+    actDiv.querySelector("#actTitle").value = "";
+    actDiv.querySelector("#actDesc").value = "";
+    actDiv.querySelector("#actFilePreview").innerHTML = "";
+    actUploadZone.classList.remove("drag-over");
+    pendingFile = null; pendingDataUrl = null; pendingFileType = null;
+    actFileInput.value = "";
+
+    const success = actDiv.querySelector("#actSuccess");
+    success.innerHTML = "✅ Atividade publicada com sucesso! Disponível para todos.";
+    success.style.display = "block";
+    setTimeout(() => success.style.display = "none", 4000);
+
+  } catch(err) {
+    console.error("Erro ao publicar atividade:", err);
+    alert("❌ Erro ao publicar atividade: " + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Publicar Atividade';
+  }
 });
 
 function updateImageGallery() {
   const gallery = actDiv.querySelector("#imgGallery");
-  const imgs = ACTIVITIES.filter(a => a.type==="image" && a.dataUrl);
+  // Aceita url (Firebase Storage) como fonte da imagem
+  const imgs = ACTIVITIES.filter(a => a.type==="image" && (a.url || a.dataUrl));
   if(!imgs.length) {
     gallery.innerHTML = `<div style="color:var(--text-muted);font-size:.78rem;grid-column:1/-1;text-align:center;padding:2rem"><i class="fas fa-image" style="font-size:2rem;display:block;margin-bottom:.5rem;color:var(--border)"></i>Nenhuma imagem enviada ainda.</div>`;
     return;
   }
   gallery.innerHTML = imgs.map(a => `
     <div class="img-gallery-item" onclick="viewActivity('${a.id}')" title="${a.title}">
-      <img src="${a.dataUrl}" alt="${a.title}">
+      <img src="${a.url || a.dataUrl}" alt="${a.title}">
     </div>
   `).join("");
 }
@@ -1872,10 +1988,11 @@ window.viewActivity = function(id) {
   if(!a) return;
   document.getElementById("viewModalTitle").textContent = a.title;
   const body = document.getElementById("viewModalBody");
-  if(a.type==="image" && a.dataUrl) {
-    body.innerHTML = `<img class="view-modal-img" src="${a.dataUrl}" alt="${a.title}">`;
-  } else if(a.type==="pdf" && a.dataUrl) {
-    body.innerHTML = `<iframe class="view-modal-pdf" src="${a.dataUrl}"></iframe>`;
+  const src = a.url || a.dataUrl; // Firebase Storage URL tem prioridade
+  if(a.type==="image" && src) {
+    body.innerHTML = `<img class="view-modal-img" src="${src}" alt="${a.title}">`;
+  } else if(a.type==="pdf" && src) {
+    body.innerHTML = `<iframe class="view-modal-pdf" src="${src}"></iframe>`;
   } else {
     body.innerHTML = `<div class="no-preview"><i class="fas ${getTypeIcon(a.type)}"></i><div style="text-align:center"><strong>${a.title}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${a.type.toUpperCase()} · ${a.size}</span><br><span style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;display:block">Visualização inline não disponível para este tipo.<br>Clique em "Baixar" para abrir o arquivo.</span></div></div>`;
   }
@@ -1898,8 +2015,9 @@ window.previewInfo = function(id) {
       </div>
       <div style="background:var(--surface2);border-radius:12px;padding:1rem;font-size:.82rem;color:var(--text-muted);line-height:1.7">${a.desc}</div>
       <div style="margin-top:1rem;font-size:.75rem;color:var(--border)">📅 Publicado em ${a.date}</div>
-      <div style="margin-top:1rem;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:.8rem;font-size:.78rem;color:#fde68a">
-        ℹ️ Este arquivo foi adicionado como exemplo. Para atividades reais, o arquivo será enviado pelo professor e ficará disponível para download.
+      <div style="margin-top:1rem;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:.8rem;font-size:.78rem;color:#a78bfa">
+        ☁️ Arquivo armazenado no Firebase Storage. Clique em "Baixar" para fazer o download.
+        ${a.uploadedBy ? `<br><span style="color:var(--text-muted)">Publicado por: ${a.uploadedBy}</span>` : ""}
       </div>
     </div>
   `;
@@ -1910,14 +2028,42 @@ window.previewInfo = function(id) {
 window.downloadActivity = function(id) {
   const a = ACTIVITIES.find(x=>x.id===id);
   if(!a) return;
-  if(a.dataUrl) {
+  const exts = {pdf:".pdf", word:".docx", excel:".xlsx", image:".png"};
+  const filename = a.title.replace(/[^a-zA-Z0-9\s]/g,"").substring(0,40) + (exts[a.type]||".file");
+  const src = a.url || a.dataUrl; // Firebase Storage URL ou fallback base64
+
+  if(src) {
+    // Abre o arquivo — Firebase Storage URLs são servidas via CDN seguro (HTTPS)
+    // O atributo download funciona para mesma origem; para Storage abre nova aba
     const link = document.createElement("a");
-    link.href = a.dataUrl;
-    const exts = {pdf:".pdf",word:".docx",excel:".xlsx",image:".png"};
-    link.download = a.title.replace(/[^a-zA-Z0-9\s]/g,"").substring(0,40) + (exts[a.type]||".file");
+    link.href = src;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.download = filename;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   } else {
-    alert("📥 Download disponível!\n\nEm uma versão com servidor, o arquivo seria baixado automaticamente.\nEste é um exemplo demonstrativo.");
+    alert("⚠️ Arquivo não disponível.\n\nEsta atividade ainda não tem um arquivo vinculado.");
+  }
+};
+
+window.deleteActivity = async function(id) {
+  const a = ACTIVITIES.find(x=>x.id===id);
+  if(!a) return;
+  if(!confirm(`Remover a atividade "${a.title}"?\nEsta ação não pode ser desfeita.`)) return;
+  try {
+    // Remove arquivo do Storage (se existir)
+    if(a.storagePath && window._fbStorageDelete) {
+      await window._fbStorageDelete(a.storagePath);
+    }
+    // Remove metadados do Realtime Database
+    if(window._fbActivitiesDelete) {
+      await window._fbActivitiesDelete(id);
+      // O listener atualizará a tela automaticamente
+    }
+  } catch(err) {
+    alert("Erro ao remover atividade: " + (err.message || err));
   }
 };
 
