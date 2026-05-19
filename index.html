@@ -1992,10 +1992,30 @@ window.viewActivity = function(id) {
   if(a.type==="image" && src) {
     body.innerHTML = `<img class="view-modal-img" src="${src}" alt="${a.title}">`;
   } else if(a.type==="pdf" && src) {
-    // Cloudinary bloqueia iframes diretos por CORS/CSP.
-    // Usamos o Google Docs Viewer como proxy para exibir o PDF inline.
+    // Google Docs Viewer como proxy para PDFs do Cloudinary (contorna CORS/CSP)
     const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`;
-    body.innerHTML = `<iframe class="view-modal-pdf" src="${viewerUrl}"></iframe>`;
+    body.innerHTML = `
+      <iframe
+        class="view-modal-pdf"
+        src="${viewerUrl}"
+        onload="this.style.opacity=1"
+        onerror="this.style.display='none';document.getElementById('pdfFallback_${a.id}').style.display='flex'"
+        style="opacity:0;transition:opacity .3s"
+      ></iframe>
+      <div id="pdfFallback_${a.id}" style="display:none;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:1rem;color:var(--text-muted)">
+        <i class="fas fa-file-pdf" style="font-size:3rem;color:#ef4444"></i>
+        <div style="text-align:center;font-size:.85rem">Pré-visualização indisponível neste navegador.<br>Clique abaixo para abrir o PDF.</div>
+        <button class="btn btn-purple" onclick="window.open('${src}','_blank')"><i class="fas fa-external-link-alt"></i> Abrir PDF</button>
+      </div>`;
+    // Fallback por timeout: se o iframe não carregar em 8s, mostra botão
+    setTimeout(() => {
+      const fr = document.getElementById('pdfFallback_${a.id}');
+      const ifr = body.querySelector('iframe');
+      if(fr && ifr && ifr.style.opacity !== '1') {
+        ifr.style.display = 'none';
+        fr.style.display = 'flex';
+      }
+    }, 8000);
   } else {
     body.innerHTML = `<div class="no-preview"><i class="fas ${getTypeIcon(a.type)}"></i><div style="text-align:center"><strong>${a.title}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${a.type.toUpperCase()} · ${a.size}</span><br><span style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;display:block">Visualização inline não disponível para este tipo.<br>Clique em "Baixar" para abrir o arquivo.</span></div></div>`;
   }
@@ -2028,30 +2048,54 @@ window.previewInfo = function(id) {
   document.getElementById("viewModal").classList.add("open");
 };
 
-window.downloadActivity = function(id) {
+window.downloadActivity = async function(id) {
   const a = ACTIVITIES.find(x=>x.id===id);
   if(!a) return;
   const exts = {pdf:".pdf", word:".docx", excel:".xlsx", image:".png"};
   const filename = a.title.replace(/[^a-zA-Z0-9\s]/g,"").substring(0,40) + (exts[a.type]||".file");
   let src = a.url || a.dataUrl;
 
-  if(src) {
-    // Para URLs do Cloudinary, adiciona fl_attachment para forçar o download
-    // Isso instrui o Cloudinary a servir o arquivo com Content-Disposition: attachment
-    if(src.includes("cloudinary.com") && src.includes("/upload/")) {
-      src = src.replace("/upload/", "/upload/fl_attachment/");
-    }
-    const link = document.createElement("a");
-    link.href = src;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
+  if(!src) {
     alert("⚠️ Arquivo não disponível.\n\nEsta atividade ainda não tem um arquivo vinculado.");
+    return;
   }
+
+  // Estratégia 1: fetch + blob (download real, sem bloqueio cross-origin do Cloudinary)
+  if(src.includes("cloudinary.com")) {
+    try {
+      // fl_attachment instrui o Cloudinary a servir com Content-Disposition: attachment
+      const dlUrl = src.includes("/upload/") ? src.replace("/upload/", "/upload/fl_attachment/") : src;
+      const resp = await fetch(dlUrl);
+      if(resp.ok) {
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        return;
+      }
+    } catch(e) {
+      // Se o fetch falhar (CORS), cai no fallback abaixo
+      console.warn("fetch download falhou, abrindo nova aba:", e);
+    }
+    // Fallback: abre o arquivo direto em nova aba
+    window.open(src, "_blank");
+    return;
+  }
+
+  // Para base64 ou outras origens: download direto
+  const link = document.createElement("a");
+  link.href = src;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 window.deleteActivity = async function(id) {
