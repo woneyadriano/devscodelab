@@ -1319,7 +1319,7 @@ footer { text-align: center; padding: 1rem; border-top: 1px solid var(--border);
     <div class="view-modal-header">
       <h3 id="viewModalTitle" style="font-size:1rem;font-weight:700"></h3>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-purple" id="viewModalDownload" style="font-size:0.72rem;padding:6px 14px"><i class="fas fa-download"></i> Baixar</button>
+        <a class="btn btn-purple" id="viewModalDownload" href="#" target="_blank" rel="noopener noreferrer" style="font-size:0.72rem;padding:6px 14px;text-decoration:none"><i class="fas fa-download"></i> Baixar</a>
         <button class="btn btn-outline" onclick="document.getElementById('viewModal').classList.remove('open')" style="font-size:0.72rem;padding:6px 14px">✕ Fechar</button>
       </div>
     </div>
@@ -2019,7 +2019,14 @@ window.viewActivity = function(id) {
   } else {
     body.innerHTML = `<div class="no-preview"><i class="fas ${getTypeIcon(a.type)}"></i><div style="text-align:center"><strong>${a.title}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${a.type.toUpperCase()} · ${a.size}</span><br><span style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;display:block">Visualização inline não disponível para este tipo.<br>Clique em "Baixar" para abrir o arquivo.</span></div></div>`;
   }
-  document.getElementById("viewModalDownload").onclick = () => downloadActivity(id);
+  // Atualiza o href do link de download direto para o arquivo do Cloudinary
+  const dlBtn = document.getElementById("viewModalDownload");
+  let dlSrc = a.url || a.dataUrl || "#";
+  if(dlSrc.includes("cloudinary.com") && dlSrc.includes("/upload/")) {
+    dlSrc = dlSrc.replace("/upload/", "/upload/fl_attachment/");
+  }
+  dlBtn.href = dlSrc;
+  dlBtn.setAttribute("download", a.title || "arquivo");
   document.getElementById("viewModal").classList.add("open");
 };
 
@@ -2044,58 +2051,43 @@ window.previewInfo = function(id) {
       </div>
     </div>
   `;
-  document.getElementById("viewModalDownload").onclick = () => downloadActivity(id);
+  const dlBtn2 = document.getElementById("viewModalDownload");
+  let dlSrc2 = a.url || a.dataUrl || "#";
+  if(dlSrc2.includes("cloudinary.com") && dlSrc2.includes("/upload/")) {
+    dlSrc2 = dlSrc2.replace("/upload/", "/upload/fl_attachment/");
+  }
+  dlBtn2.href = dlSrc2;
+  dlBtn2.setAttribute("download", a.title || "arquivo");
   document.getElementById("viewModal").classList.add("open");
 };
 
-window.downloadActivity = async function(id) {
+window.downloadActivity = function(id) {
   const a = ACTIVITIES.find(x=>x.id===id);
   if(!a) return;
-  const exts = {pdf:".pdf", word:".docx", excel:".xlsx", image:".png"};
-  const filename = a.title.replace(/[^a-zA-Z0-9\s]/g,"").substring(0,40) + (exts[a.type]||".file");
-  let src = a.url || a.dataUrl;
 
+  let src = a.url || a.dataUrl;
   if(!src) {
     alert("⚠️ Arquivo não disponível.\n\nEsta atividade ainda não tem um arquivo vinculado.");
     return;
   }
 
-  // Estratégia 1: fetch + blob (download real, sem bloqueio cross-origin do Cloudinary)
-  if(src.includes("cloudinary.com")) {
-    try {
-      // fl_attachment instrui o Cloudinary a servir com Content-Disposition: attachment
-      const dlUrl = src.includes("/upload/") ? src.replace("/upload/", "/upload/fl_attachment/") : src;
-      const resp = await fetch(dlUrl);
-      if(resp.ok) {
-        const blob = await resp.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        return;
-      }
-    } catch(e) {
-      // Se o fetch falhar (CORS), cai no fallback abaixo
-      console.warn("fetch download falhou, abrindo nova aba:", e);
-    }
-    // Fallback: abre o arquivo direto em nova aba
-    window.open(src, "_blank");
-    return;
+  // Para Cloudinary: abre o arquivo diretamente em nova aba.
+  // O fl_attachment na URL instrui o Cloudinary a fazer o download automaticamente.
+  // Não usamos fetch+blob pois o Cloudinary bloqueia CORS em plano gratuito.
+  if(src.includes("cloudinary.com") && src.includes("/upload/")) {
+    src = src.replace("/upload/", "/upload/fl_attachment/");
   }
 
-  // Para base64 ou outras origens: download direto
+  // Cria um link invisível e simula clique — funciona para qualquer origem
   const link = document.createElement("a");
   link.href = src;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.download = filename;
+  link.setAttribute("download", "");
+  link.setAttribute("target", "_blank");
+  link.setAttribute("rel", "noopener noreferrer");
+  // Adiciona ao DOM, clica e remove — necessário para Firefox
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  setTimeout(() => document.body.removeChild(link), 100);
 };
 
 window.deleteActivity = async function(id) {
