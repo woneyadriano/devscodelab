@@ -158,12 +158,21 @@
 
   window._fbStorageUpload = (file, onProgress) => {
     return new Promise((resolve, reject) => {
+      // Determina o resource_type correto:
+      // - "image" para imagens (png, jpg, gif, webp)
+      // - "raw" para PDFs, Word, Excel e qualquer outro arquivo
+      // IMPORTANTE: usar "raw" garante que o Cloudinary trate o arquivo
+      // como download público, evitando o erro 401 no download.
+      const imgExts = ["png","jpg","jpeg","gif","webp"];
+      const ext = file.name.split(".").pop().toLowerCase();
+      const resourceType = imgExts.includes(ext) ? "image" : "raw";
+
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`);
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && onProgress) {
@@ -2022,11 +2031,20 @@ window.viewActivity = function(id) {
   // Atualiza o href do link de download direto para o arquivo do Cloudinary
   const dlBtn = document.getElementById("viewModalDownload");
   let dlSrc = a.url || a.dataUrl || "#";
-  if(dlSrc.includes("cloudinary.com") && dlSrc.includes("/upload/")) {
-    dlSrc = dlSrc.replace("/upload/", "/upload/fl_attachment/");
+  if(dlSrc.includes("cloudinary.com") && !dlSrc.includes("fl_attachment")) {
+    if(dlSrc.includes("/image/upload/"))      dlSrc = dlSrc.replace("/image/upload/", "/image/upload/fl_attachment/");
+    else if(dlSrc.includes("/raw/upload/"))   dlSrc = dlSrc.replace("/raw/upload/", "/raw/upload/fl_attachment/");
+    else if(dlSrc.includes("/auto/upload/")) {
+      const imgExts = ["png","jpg","jpeg","gif","webp"];
+      const ext = (a.title||"").split(".").pop().toLowerCase();
+      dlSrc = imgExts.includes(ext) || a.type==="image"
+        ? dlSrc.replace("/auto/upload/", "/image/upload/fl_attachment/")
+        : dlSrc.replace("/auto/upload/", "/raw/upload/fl_attachment/");
+    } else dlSrc = dlSrc.replace("/upload/", "/upload/fl_attachment/");
   }
   dlBtn.href = dlSrc;
-  dlBtn.setAttribute("download", a.title || "arquivo");
+  dlBtn.setAttribute("target", "_blank");
+  dlBtn.removeAttribute("download");
   document.getElementById("viewModal").classList.add("open");
 };
 
@@ -2053,11 +2071,20 @@ window.previewInfo = function(id) {
   `;
   const dlBtn2 = document.getElementById("viewModalDownload");
   let dlSrc2 = a.url || a.dataUrl || "#";
-  if(dlSrc2.includes("cloudinary.com") && dlSrc2.includes("/upload/")) {
-    dlSrc2 = dlSrc2.replace("/upload/", "/upload/fl_attachment/");
+  if(dlSrc2.includes("cloudinary.com") && !dlSrc2.includes("fl_attachment")) {
+    if(dlSrc2.includes("/image/upload/"))      dlSrc2 = dlSrc2.replace("/image/upload/", "/image/upload/fl_attachment/");
+    else if(dlSrc2.includes("/raw/upload/"))   dlSrc2 = dlSrc2.replace("/raw/upload/", "/raw/upload/fl_attachment/");
+    else if(dlSrc2.includes("/auto/upload/")) {
+      const imgExts2 = ["png","jpg","jpeg","gif","webp"];
+      const ext2 = (a.title||"").split(".").pop().toLowerCase();
+      dlSrc2 = imgExts2.includes(ext2) || a.type==="image"
+        ? dlSrc2.replace("/auto/upload/", "/image/upload/fl_attachment/")
+        : dlSrc2.replace("/auto/upload/", "/raw/upload/fl_attachment/");
+    } else dlSrc2 = dlSrc2.replace("/upload/", "/upload/fl_attachment/");
   }
   dlBtn2.href = dlSrc2;
-  dlBtn2.setAttribute("download", a.title || "arquivo");
+  dlBtn2.setAttribute("target", "_blank");
+  dlBtn2.removeAttribute("download");
   document.getElementById("viewModal").classList.add("open");
 };
 
@@ -2071,20 +2098,35 @@ window.downloadActivity = function(id) {
     return;
   }
 
-  // Para Cloudinary: abre o arquivo diretamente em nova aba.
-  // O fl_attachment na URL instrui o Cloudinary a fazer o download automaticamente.
-  // Não usamos fetch+blob pois o Cloudinary bloqueia CORS em plano gratuito.
-  if(src.includes("cloudinary.com") && src.includes("/upload/")) {
-    src = src.replace("/upload/", "/upload/fl_attachment/");
+  // Para Cloudinary: corrige a URL de acordo com o resource_type do arquivo.
+  // Arquivos "raw" (PDF, Word, Excel) ficam em /raw/upload/ no Cloudinary.
+  // Imagens ficam em /image/upload/.
+  // O fl_attachment instrui o Cloudinary a forçar o download — funciona apenas
+  // quando a URL usa o resource_type correto (raw para docs, image para fotos).
+  if(src.includes("cloudinary.com")) {
+    const imgExts = ["png","jpg","jpeg","gif","webp"];
+    const ext = (a.title || src).split(".").pop().toLowerCase();
+    const isImage = imgExts.includes(ext) || a.type === "image";
+
+    if(src.includes("/auto/upload/")) {
+      // Upload antigo com /auto/ — corrige para o tipo certo
+      src = isImage
+        ? src.replace("/auto/upload/", "/image/upload/fl_attachment/")
+        : src.replace("/auto/upload/", "/raw/upload/fl_attachment/");
+    } else if(src.includes("/image/upload/") && !src.includes("fl_attachment")) {
+      src = src.replace("/image/upload/", "/image/upload/fl_attachment/");
+    } else if(src.includes("/raw/upload/") && !src.includes("fl_attachment")) {
+      src = src.replace("/raw/upload/", "/raw/upload/fl_attachment/");
+    } else if(src.includes("/upload/") && !src.includes("fl_attachment")) {
+      src = src.replace("/upload/", "/upload/fl_attachment/");
+    }
   }
 
-  // Cria um link invisível e simula clique — funciona para qualquer origem
+  // Abre em nova aba — o fl_attachment faz o browser baixar automaticamente
   const link = document.createElement("a");
   link.href = src;
-  link.setAttribute("download", "");
   link.setAttribute("target", "_blank");
   link.setAttribute("rel", "noopener noreferrer");
-  // Adiciona ao DOM, clica e remove — necessário para Firefox
   document.body.appendChild(link);
   link.click();
   setTimeout(() => document.body.removeChild(link), 100);
