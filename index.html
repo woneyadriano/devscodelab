@@ -2028,16 +2028,10 @@ window.viewActivity = function(id) {
   } else {
     body.innerHTML = `<div class="no-preview"><i class="fas ${getTypeIcon(a.type)}"></i><div style="text-align:center"><strong>${a.title}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${a.type.toUpperCase()} · ${a.size}</span><br><span style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;display:block">Visualização inline não disponível para este tipo.<br>Clique em "Baixar" para abrir o arquivo.</span></div></div>`;
   }
-  // Botão de download no modal — usa URL limpa, o fetch+blob cuida do resto
+  // Botão de download no modal
   const dlBtn = document.getElementById("viewModalDownload");
-  const dlSrc = (a.url || a.dataUrl || "#")
-    .replace("/fl_attachment/", "/")
-    .replace("/upload/fl_attachment", "/upload");
-  dlBtn.href = dlSrc;
-  dlBtn.setAttribute("target", "_blank");
-  dlBtn.removeAttribute("download");
-  // Sobrescreve o clique para usar fetch+blob igual ao downloadActivity
   dlBtn.onclick = (e) => { e.preventDefault(); window.downloadActivity(id); };
+  dlBtn.href = "#";
   document.getElementById("viewModal").classList.add("open");
 };
 
@@ -2063,72 +2057,32 @@ window.previewInfo = function(id) {
     </div>
   `;
   const dlBtn2 = document.getElementById("viewModalDownload");
-  const dlSrc2 = (a.url || a.dataUrl || "#")
-    .replace("/fl_attachment/", "/")
-    .replace("/upload/fl_attachment", "/upload");
-  dlBtn2.href = dlSrc2;
-  dlBtn2.setAttribute("target", "_blank");
-  dlBtn2.removeAttribute("download");
   dlBtn2.onclick = (e) => { e.preventDefault(); window.downloadActivity(id); };
+  dlBtn2.href = "#";
   document.getElementById("viewModal").classList.add("open");
 };
 
-window.downloadActivity = async function(id) {
+window.downloadActivity = function(id) {
   const a = ACTIVITIES.find(x=>x.id===id);
   if(!a) return;
 
-  const src = a.url || a.dataUrl;
+  let src = a.url || a.dataUrl;
   if(!src) {
     alert("⚠️ Arquivo não disponível.\n\nEsta atividade ainda não tem um arquivo vinculado.");
     return;
   }
 
-  // Nome do arquivo para salvar — tenta pegar extensão do título ou da URL
-  const guessExt = () => {
-    const fromTitle = (a.title||"").split(".").pop().toLowerCase();
-    const fromUrl   = src.split("?")[0].split(".").pop().toLowerCase();
-    const known = ["pdf","doc","docx","xls","xlsx","png","jpg","jpeg","gif","webp","zip","txt"];
-    if(known.includes(fromTitle)) return fromTitle;
-    if(known.includes(fromUrl))   return fromUrl;
-    return a.type === "pdf" ? "pdf" : a.type === "word" ? "docx" : a.type === "excel" ? "xlsx" : "bin";
-  };
-  const ext      = guessExt();
-  const fileName = a.title
-    ? (a.title.includes(".") ? a.title : `${a.title}.${ext}`)
-    : `atividade.${ext}`;
-
-  // Estratégia 1: fetch → Blob → link temporário
-  // Funciona para qualquer URL pública (Cloudinary, Firebase, etc.)
-  // Remove fl_attachment da URL — vamos baixar o conteúdo via fetch diretamente
-  const cleanUrl = src
-    .replace("/fl_attachment/", "/")
-    .replace("/upload/fl_attachment", "/upload");
-
-  try {
-    // Mostra feedback visual no botão
-    const btn = actDiv.querySelector(`[onclick="downloadActivity('${id}')"]`);
-    const origHTML = btn ? btn.innerHTML : null;
-    if(btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
-
-    const response = await fetch(cleanUrl);
-    if(!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const blob    = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const link    = document.createElement("a");
-    link.href     = blobUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(blobUrl); }, 1000);
-
-    if(btn) { btn.innerHTML = origHTML; btn.disabled = false; }
-
-  } catch(err) {
-    // Estratégia 2 (fallback): abre em nova aba se o fetch falhar por CORS
-    console.warn("fetch falhou, abrindo em nova aba:", err.message);
-    window.open(cleanUrl, "_blank", "noopener,noreferrer");
+  // Para Cloudinary: insere fl_attachment logo após /upload/ (ou /raw/upload/, /image/upload/)
+  // Isso instrui o Cloudinary a enviar o header Content-Disposition: attachment
+  // fazendo o browser baixar o arquivo em vez de tentar abri-lo.
+  // Funciona para /raw/upload/ (PDFs, docs) e /image/upload/ (imagens).
+  if(src.includes("cloudinary.com") && !src.includes("fl_attachment")) {
+    // Insere fl_attachment como transformation flag logo após /upload/
+    src = src.replace(/\/upload\/(?!fl_attachment)/, "/upload/fl_attachment/");
   }
+
+  // Abre em nova aba com fl_attachment — o Cloudinary força o download automaticamente
+  window.open(src, "_blank", "noopener,noreferrer");
 };
 
 window.deleteActivity = async function(id) {
