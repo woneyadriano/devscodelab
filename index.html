@@ -149,30 +149,41 @@
   // Remove metadados do banco
   window._fbActivitiesDelete = (id) => remove(ref(db, 'ficr_activities/' + id));
 
-  // ── Cloudinary — upload de arquivo com progresso ──
+  // ── Supabase Storage — upload de arquivo com progresso ──
   // Retorna Promise<{ url, storagePath }>
   // onProgress(percent) é chamado durante o upload (0–100)
-  // 👇 Substitua com suas credenciais do Cloudinary (cloudinary.com → plano gratuito)
-  const CLOUDINARY_CLOUD_NAME   = "dxmqasans";
-  const CLOUDINARY_UPLOAD_PRESET = "devs_cod_lab";
+  //
+  // ✅ CONFIGURAÇÃO SUPABASE (gratuito, sem limite de downloads):
+  // 1. Acesse https://supabase.com → crie um projeto gratuito
+  // 2. Vá em Storage → Create bucket → nome: "atividades" → marque "Public bucket" → Create
+  // 3. Vá em Project Settings → API → copie:
+  //    - "Project URL"  → cole em SUPABASE_URL abaixo
+  //    - "anon public"  → cole em SUPABASE_ANON_KEY abaixo
+  // 4. (Opcional) Em Storage → Policies → "atividades" → adicione política de INSERT público
+  //    para que qualquer usuário autenticado possa fazer upload.
+  //
+  // 👇 SUBSTITUA COM SUAS CREDENCIAIS:
+  const SUPABASE_URL      = "https://iwujarfjwleddqgqrbmg.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_I7I3uRALkVVhj1BiZwVtjA_CDOZRWdx";
+  const SUPABASE_BUCKET   = "atividades";                     // nome do bucket criado
 
-  window._fbStorageUpload = (file, onProgress) => {
+  window._fbStorageUpload = async (file, onProgress) => {
+    if (!SUPABASE_URL || SUPABASE_URL === "COLE_AQUI_A_URL_DO_PROJETO") {
+      throw new Error("Configure as credenciais do Supabase no topo do arquivo (SUPABASE_URL e SUPABASE_ANON_KEY).");
+    }
+
+    // Gera nome único para evitar colisões
+    const timestamp = Date.now();
+    const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const storagePath = `uploads/${timestamp}_${safeName}`;
+
+    // Supabase Storage API — upload via fetch com XMLHttpRequest para progresso
     return new Promise((resolve, reject) => {
-      // Determina o resource_type correto:
-      // - "image" para imagens (png, jpg, gif, webp)
-      // - "raw" para PDFs, Word, Excel e qualquer outro arquivo
-      // IMPORTANTE: usar "raw" garante que o Cloudinary trate o arquivo
-      // como download público, evitando o erro 401 no download.
-      const imgExts = ["png","jpg","jpeg","gif","webp"];
-      const ext = file.name.split(".").pop().toLowerCase();
-      const resourceType = imgExts.includes(ext) ? "image" : "raw";
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+      xhr.open("POST", `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${storagePath}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${SUPABASE_ANON_KEY}`);
+      xhr.setRequestHeader("x-upsert", "true");
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && onProgress) {
@@ -182,25 +193,33 @@
 
       xhr.onload = () => {
         try {
-          const res = JSON.parse(xhr.responseText);
-          if (xhr.status === 200) {
-            resolve({ url: res.secure_url, storagePath: res.public_id });
+          if (xhr.status === 200 || xhr.status === 201) {
+            // Monta a URL pública do arquivo (bucket público)
+            const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${storagePath}`;
+            resolve({ url: publicUrl, storagePath });
           } else {
-            reject(new Error(res.error?.message || "Erro no upload para Cloudinary"));
+            const res = JSON.parse(xhr.responseText || "{}");
+            reject(new Error(res.message || res.error || `Erro no upload (HTTP ${xhr.status})`));
           }
-        } catch(e) { reject(new Error("Resposta inválida do Cloudinary")); }
+        } catch(e) { reject(new Error("Resposta inválida do Supabase")); }
       };
 
-      xhr.onerror = () => reject(new Error("Falha na conexão com Cloudinary"));
-      xhr.send(formData);
+      xhr.onerror = () => reject(new Error("Falha na conexão com o Supabase Storage"));
+      xhr.send(file);
     });
   };
 
-  // Remoção via Cloudinary requer backend — remove só do banco por ora
-  window._fbStorageDelete = async (publicId) => {
-    if (!publicId) return;
-    // O arquivo permanece no Cloudinary mas é removido da listagem do site
-    console.log("Atividade removida do banco. Para remover o arquivo do Cloudinary, acesse o Media Library e delete o public_id:", publicId);
+  // Remove arquivo do Supabase Storage
+  window._fbStorageDelete = async (storagePath) => {
+    if (!storagePath || !SUPABASE_URL || SUPABASE_URL === "COLE_AQUI_A_URL_DO_PROJETO") return;
+    try {
+      await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${storagePath}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+    } catch(e) {
+      console.warn("Não foi possível remover o arquivo do Supabase:", e.message);
+    }
   };
 
   window._firebaseReady = true;
@@ -1919,7 +1938,7 @@ actDiv.querySelector("#actSendBtn").addEventListener("click", async () => {
         <div style="margin-top:.5rem">
           <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:4px">
             <i class="fas fa-cloud-upload-alt" style="color:var(--purple)"></i>
-            Enviando para Firebase Storage<span class="loading-dots"></span>
+            Enviando para Supabase Storage<span class="loading-dots"></span>
           </div>
           <div style="background:var(--surface2);border-radius:40px;height:8px;overflow:hidden">
             <div id="uploadProgressBar" style="height:100%;border-radius:40px;background:linear-gradient(90deg,#7c3aed,#8b5cf6);width:0%;transition:width .2s ease"></div>
@@ -2001,7 +2020,7 @@ window.viewActivity = function(id) {
   if(a.type==="image" && src) {
     body.innerHTML = `<img class="view-modal-img" src="${src}" alt="${a.title}">`;
   } else if(a.type==="pdf" && src) {
-    // Google Docs Viewer como proxy para PDFs do Cloudinary (contorna CORS/CSP)
+    // Google Docs Viewer como proxy para PDFs do Supabase (contorna CORS/CSP)
     const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`;
     body.innerHTML = `
       <iframe
@@ -2051,7 +2070,7 @@ window.previewInfo = function(id) {
       <div style="background:var(--surface2);border-radius:12px;padding:1rem;font-size:.82rem;color:var(--text-muted);line-height:1.7">${a.desc}</div>
       <div style="margin-top:1rem;font-size:.75rem;color:var(--border)">📅 Publicado em ${a.date}</div>
       <div style="margin-top:1rem;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:.8rem;font-size:.78rem;color:#a78bfa">
-        ☁️ Arquivo armazenado no Firebase Storage. Clique em "Baixar" para fazer o download.
+        ☁️ Arquivo armazenado no Supabase Storage. Clique em "Baixar" para fazer o download.
         ${a.uploadedBy ? `<br><span style="color:var(--text-muted)">Publicado por: ${a.uploadedBy}</span>` : ""}
       </div>
     </div>
@@ -2066,23 +2085,32 @@ window.downloadActivity = function(id) {
   const a = ACTIVITIES.find(x=>x.id===id);
   if(!a) return;
 
-  let src = a.url || a.dataUrl;
+  const src = a.url || a.dataUrl;
   if(!src) {
     alert("⚠️ Arquivo não disponível.\n\nEsta atividade ainda não tem um arquivo vinculado.");
     return;
   }
 
-  // Para Cloudinary: insere fl_attachment logo após /upload/ (ou /raw/upload/, /image/upload/)
-  // Isso instrui o Cloudinary a enviar o header Content-Disposition: attachment
-  // fazendo o browser baixar o arquivo em vez de tentar abri-lo.
-  // Funciona para /raw/upload/ (PDFs, docs) e /image/upload/ (imagens).
-  if(src.includes("cloudinary.com") && !src.includes("fl_attachment")) {
-    // Insere fl_attachment como transformation flag logo após /upload/
-    src = src.replace(/\/upload\/(?!fl_attachment)/, "/upload/fl_attachment/");
+  // Para URLs do Supabase Storage (públicas): baixa diretamente via <a download>
+  // Isso força o download sem precisar de nenhuma transformação especial
+  if(src.startsWith("http")) {
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = a.title + (a.type === "pdf" ? ".pdf" : a.type === "word" ? ".docx" : a.type === "excel" ? ".xlsx" : "");
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    // dataUrl (base64) — download direto
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = a.title;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
-
-  // Abre em nova aba com fl_attachment — o Cloudinary força o download automaticamente
-  window.open(src, "_blank", "noopener,noreferrer");
 };
 
 window.deleteActivity = async function(id) {
