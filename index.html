@@ -138,12 +138,24 @@
   window._fbActivitiesSave = (activity) => push(activitiesRef, activity);
 
   // Listener em tempo real — chama cb(list) sempre que o banco mudar
+  let _activitiesUnsubscribe = null;
   window._fbActivitiesListen = (cb) => {
-    onValue(activitiesRef, snap => {
+    // Cancela listener anterior se existir
+    if (_activitiesUnsubscribe) {
+      _activitiesUnsubscribe();
+      _activitiesUnsubscribe = null;
+    }
+    _activitiesUnsubscribe = onValue(activitiesRef, snap => {
       const list = [];
-      snap.forEach(child => list.push({ id: child.key, ...child.val() }));
+      snap.forEach(child => {
+        const val = child.val();
+        if (val && val.title) { // só inclui entradas válidas com título
+          list.push({ id: child.key, ...val });
+        }
+      });
       cb(list.reverse()); // mais recentes primeiro
     });
+    return _activitiesUnsubscribe;
   };
 
   // Remove metadados do banco
@@ -1695,22 +1707,7 @@ function initActivitiesListener() {
 }
 initActivitiesListener();
 
-// Garante que o listener seja reiniciado após o login do usuário
-window.addEventListener('firebase-ready', () => {
-  setTimeout(() => {
-    if (window._fbActivitiesListen) {
-      window._fbActivitiesListen(list => {
-        ACTIVITIES = list;
-        renderActivities(
-          typeof currentFilter !== 'undefined' ? currentFilter : 'all',
-          document.querySelector('#actSearch')?.value || ''
-        );
-        renderStats();
-        updateImageGallery();
-      });
-    }
-  }, 1000);
-});
+
 
 const actDiv = document.createElement("div");
 actDiv.className = "tab-content";
@@ -1988,17 +1985,7 @@ actDiv.querySelector("#actSendBtn").addEventListener("click", async () => {
 
     // Salva metadados no Realtime Database e força atualização da tela
     await window._fbActivitiesSave(newAct);
-    // Força atualização manual caso o listener não dispare
-    setTimeout(() => {
-      if (window._fbActivitiesListen) {
-        window._fbActivitiesListen(list => {
-          ACTIVITIES = list;
-          renderActivities(typeof currentFilter !== 'undefined' ? currentFilter : 'all', document.querySelector('#actSearch')?.value || '');
-          renderStats();
-          updateImageGallery();
-        });
-      }
-    }, 500);
+
 
     // Reset form
     actDiv.querySelector("#actTitle").value = "";
