@@ -1695,6 +1695,23 @@ function initActivitiesListener() {
 }
 initActivitiesListener();
 
+// Garante que o listener seja reiniciado após o login do usuário
+window.addEventListener('firebase-ready', () => {
+  setTimeout(() => {
+    if (window._fbActivitiesListen) {
+      window._fbActivitiesListen(list => {
+        ACTIVITIES = list;
+        renderActivities(
+          typeof currentFilter !== 'undefined' ? currentFilter : 'all',
+          document.querySelector('#actSearch')?.value || ''
+        );
+        renderStats();
+        updateImageGallery();
+      });
+    }
+  }, 1000);
+});
+
 const actDiv = document.createElement("div");
 actDiv.className = "tab-content";
 actDiv.id = "tab-activities";
@@ -1969,9 +1986,19 @@ actDiv.querySelector("#actSendBtn").addEventListener("click", async () => {
       uploadedAt: Date.now()
     };
 
-    // Salva metadados no Realtime Database
-    // O listener _fbActivitiesListen vai atualizar a tela automaticamente
+    // Salva metadados no Realtime Database e força atualização da tela
     await window._fbActivitiesSave(newAct);
+    // Força atualização manual caso o listener não dispare
+    setTimeout(() => {
+      if (window._fbActivitiesListen) {
+        window._fbActivitiesListen(list => {
+          ACTIVITIES = list;
+          renderActivities(typeof currentFilter !== 'undefined' ? currentFilter : 'all', document.querySelector('#actSearch')?.value || '');
+          renderStats();
+          updateImageGallery();
+        });
+      }
+    }, 500);
 
     // Reset form
     actDiv.querySelector("#actTitle").value = "";
