@@ -2435,15 +2435,15 @@ window.switchChannel = function switchChannel(channel, name, type) {
   if (headerSub) headerSub.textContent = type === "group"
     ? `${Object.keys(_onlineUsers).length} online` : "Conversa privada";
 
-  // 5. Limpar área de mensagens
-  const area = document.getElementById("waMsgsArea");
-  if (area) area.innerHTML = `<div class="bubble bubble-system">🔄 Carregando mensagens...</div>`;
+  // 5. Limpar área de mensagens (tenta agora, mas pode ainda não existir no DOM)
+  const areaNow = document.getElementById("waMsgsArea");
+  if (areaNow) areaNow.innerHTML = `<div class="bubble bubble-system">🔄 Carregando mensagens...</div>`;
 
-  // 6. Registrar novo listener — captura a referência correta do canal
+  // 6. Registrar novo listener — busca #waMsgsArea no momento do callback (DOM já estará pronto)
   const capturedChannel = channel;
   const renderForThis = (msgs) => {
-    // Ignorar se o canal já mudou
     if (_activeChannel !== capturedChannel) return;
+    const area = document.getElementById("waMsgsArea");
     renderWaMsgs(msgs, area);
   };
 
