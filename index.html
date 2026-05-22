@@ -39,24 +39,24 @@
   window._fbChatSend = (msg) => push(chatRef, msg);
   window._fbChatListen = (cb) => {
     const q = query(chatRef, limitToLast(100));
-    if (window._fbChatUnsub) { window._fbChatUnsub(); window._fbChatUnsub = null; }
-    window._fbChatUnsub = onValue(q, snap => {
+    const unsub = onValue(q, snap => {
       const msgs = [];
       snap.forEach(child => msgs.push({id: child.key, ...child.val()}));
       cb(msgs);
     });
-    return () => { if (window._fbChatUnsub) { window._fbChatUnsub(); window._fbChatUnsub = null; } };
+    return unsub;
   };
 
   // ── Chat por canal (grupos/DMs) ──
   window._fbChannelSend = (channel, msg) => push(ref(db, 'ficr_channels/'+channel), msg);
   window._fbChannelListen = (channel, cb) => {
     const q = query(ref(db, 'ficr_channels/'+channel), limitToLast(100));
-    return onValue(q, snap => {
+    const unsub = onValue(q, snap => {
       const msgs = [];
       snap.forEach(child => msgs.push({id: child.key, ...child.val()}));
       cb(msgs);
     });
+    return unsub;
   };
 
   // ── Grupos ──
@@ -2184,7 +2184,7 @@ chatDiv.innerHTML = `
       <input class="wa-search-input" id="waSearchInput" placeholder="🔍 Pesquisar conversa">
     </div>
     <div class="wa-convo-list" id="waConvoList">
-      <div class="wa-convo-item active" data-channel="geral" data-type="group" data-name="Grupo Geral Devs">
+      <div class="wa-convo-item active" data-channel="geral" data-type="group" data-name="Grupo Geral Devs" onclick="switchChannel('geral','Grupo Geral Devs','group')">
         <div class="wa-convo-avatar group-av">💬</div>
         <div class="wa-convo-info">
           <div class="wa-convo-name">Grupo Geral Devs</div>
@@ -2409,7 +2409,7 @@ function renderConvoList() {
 }
 
 // ─── Trocar canal ─────────────────────────────────────────────
-function switchChannel(channel, name, type) {
+window.switchChannel = function switchChannel(channel, name, type) {
   // 1. Cancelar listener anterior
   if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
 
@@ -2543,9 +2543,9 @@ async function waSend(text, mediaUrl = null, isSticker = false) {
 
 // ─── Presença ─────────────────────────────────────────────────
 function initWaPresence() {
-  if (_presenceInited) return;
   const user = window._currentUser;
   if (!user || !window._fbPresenceSet) return;
+  if (_presenceInited) return;
   _presenceInited = true;
 
   window._fbPresenceSet(user.uid, getChatName());
@@ -2580,19 +2580,19 @@ function initWaPresence() {
 
 // ─── Inicialização ────────────────────────────────────────────
 function initWaChat() {
-  if (!window._fbChatListen) {
-    window.addEventListener('firebase-ready', initWaChat, { once: true });
-    return;
-  }
+  if (!window._fbChatListen || !window._currentUser) return;
+  // Sempre abre o canal geral na primeira vez ou após novo login
   if (!_chatInited) {
     _chatInited = true;
     switchChannel("geral", "Grupo Geral Devs", "group");
   }
-  // Iniciar presença se usuário já estiver logado
-  if (window._currentUser) initWaPresence();
+  initWaPresence();
 }
-if (window._fbChatListen) initWaChat();
-else window.addEventListener('firebase-ready', initWaChat, { once: true });
+
+// Tenta iniciar quando Firebase estiver pronto
+window.addEventListener('firebase-ready', () => {
+  if (window._currentUser) initWaChat();
+});
 
 // ─── Emojis ───────────────────────────────────────────────────
 const waEmojiGrid = chatDiv.querySelector("#waEmojiGrid");
@@ -3134,14 +3134,19 @@ function initAuth() {
     if(user) {
       document.getElementById("authOverlay").style.display = "none";
       setUserBar(user);
-      // Inicia presença/listeners do chat agora que o usuário está logado
-      if (typeof initWaPresence === 'function') setTimeout(initWaPresence, 100);
+      // Inicia chat + presença agora que o usuário está logado
+      if (typeof initWaChat === 'function') setTimeout(initWaChat, 200);
+      else if (typeof initWaPresence === 'function') setTimeout(initWaPresence, 200);
     } else {
       document.getElementById("authOverlay").style.display = "flex";
       document.getElementById("userBar").style.display = "none";
       window._currentUser = null;
       const cb = document.getElementById("chatUserBadge");
       if(cb) cb.style.display = "none";
+      // Reset chat state so re-login reinitializes
+      _chatInited = false;
+      _presenceInited = false;
+      if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
     }
   });
 
