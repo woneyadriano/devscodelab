@@ -2590,9 +2590,13 @@ function initWaChat() {
 }
 
 // Tenta iniciar quando Firebase estiver pronto
-window.addEventListener('firebase-ready', () => {
-  if (window._currentUser) initWaChat();
-});
+if (window._firebaseReady && window._currentUser) {
+  initWaChat();
+} else {
+  window.addEventListener('firebase-ready', () => {
+    if (window._currentUser) initWaChat();
+  });
+}
 
 // ─── Emojis ───────────────────────────────────────────────────
 const waEmojiGrid = chatDiv.querySelector("#waEmojiGrid");
@@ -3123,7 +3127,7 @@ window.doLogout = async function() {
 };
 
 function initAuth() {
-  if(!window._fbAuth) {
+  if(!window._fbAuth || !window._firebaseReady) {
     window.addEventListener('firebase-ready', initAuth, { once: true });
     return;
   }
@@ -3227,7 +3231,7 @@ function initAuth() {
 }
 
 // Start auth when firebase is ready
-if(window._fbAuth) { initAuth(); }
+if(window._firebaseReady && window._fbAuth) { initAuth(); }
 else { window.addEventListener('firebase-ready', initAuth, { once: true }); }
 
 // ============================================================
