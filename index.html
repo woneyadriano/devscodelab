@@ -235,6 +235,7 @@
   };
 
   window._firebaseReady = true;
+  console.log('[DIAG] Firebase pronto, disparando firebase-ready');
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
@@ -2410,6 +2411,7 @@ function renderConvoList() {
 
 // ─── Trocar canal ─────────────────────────────────────────────
 window.switchChannel = function switchChannel(channel, name, type) {
+  console.log('[DIAG] switchChannel chamado:', channel, name);
   // 1. Cancelar listener anterior
   if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
 
@@ -2442,8 +2444,10 @@ window.switchChannel = function switchChannel(channel, name, type) {
   // 6. Registrar novo listener — busca #waMsgsArea no momento do callback (DOM já estará pronto)
   const capturedChannel = channel;
   const renderForThis = (msgs) => {
+    console.log('[DIAG] renderForThis chamado, canal=', capturedChannel, 'msgs=', msgs ? msgs.length : 0, '_activeChannel=', _activeChannel);
     if (_activeChannel !== capturedChannel) return;
     const area = document.getElementById("waMsgsArea");
+    console.log('[DIAG] waMsgsArea encontrado=', !!area);
     renderWaMsgs(msgs, area);
   };
 
@@ -2460,6 +2464,7 @@ window.switchChannel = function switchChannel(channel, name, type) {
 
 // ─── Renderizar mensagens ─────────────────────────────────────
 function renderWaMsgs(msgs, area) {
+  console.log('[DIAG] renderWaMsgs chamado, area=', !!area, 'msgs=', msgs ? msgs.length : 0);
   if (!area) return;
   const myUid  = getChatUid();
   const myName = getChatName();
@@ -2580,6 +2585,7 @@ function initWaPresence() {
 
 // ─── Inicialização ────────────────────────────────────────────
 function initWaChat() {
+  console.log('[DIAG] initWaChat chamado, _fbChatListen=', !!window._fbChatListen, '_currentUser=', !!window._currentUser, '_chatInited=', _chatInited);
   if (!window._fbChatListen || !window._currentUser) return;
   // Sempre abre o canal geral na primeira vez ou após novo login
   if (!_chatInited) {
@@ -3127,13 +3133,16 @@ window.doLogout = async function() {
 };
 
 function initAuth() {
+  console.log('[DIAG] initAuth chamado, _fbAuth=', !!window._fbAuth, '_firebaseReady=', !!window._firebaseReady);
   if(!window._fbAuth || !window._firebaseReady) {
+    console.log('[DIAG] initAuth aguardando firebase-ready...');
     window.addEventListener('firebase-ready', initAuth, { once: true });
     return;
   }
 
   // Auth state listener
   window._fbAuth.onAuthChange(user => {
+    console.log('[DIAG] onAuthChange disparou, user=', user ? user.email : 'null');
     window._currentUser = user;
     if(user) {
       document.getElementById("authOverlay").style.display = "none";
