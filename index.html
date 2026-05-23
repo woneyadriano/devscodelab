@@ -235,7 +235,6 @@
   };
 
   window._firebaseReady = true;
-  console.log('[DIAG] Firebase pronto, disparando firebase-ready');
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
@@ -2185,7 +2184,7 @@ chatDiv.innerHTML = `
       <input class="wa-search-input" id="waSearchInput" placeholder="🔍 Pesquisar conversa">
     </div>
     <div class="wa-convo-list" id="waConvoList">
-      <div class="wa-convo-item active" data-channel="geral" data-type="group" data-name="Grupo Geral Devs" onclick="switchChannel('geral','Grupo Geral Devs','group')">
+      <div class="wa-convo-item active" data-channel="geral" data-type="group" data-name="Grupo Geral Devs" id="waGeralItem">
         <div class="wa-convo-avatar group-av">💬</div>
         <div class="wa-convo-info">
           <div class="wa-convo-name">Grupo Geral Devs</div>
@@ -2314,6 +2313,11 @@ chatDiv.innerHTML = `
 `;
 main.appendChild(chatDiv);
 
+// Listener único para o item fixo "Grupo Geral Devs"
+document.getElementById("waGeralItem").addEventListener("click", () => {
+  switchChannel("geral", "Grupo Geral Devs", "group");
+});
+
 // ============================================================
 // CHAT WHATSAPP LOGIC — v3 corrigido
 // ============================================================
@@ -2365,7 +2369,7 @@ function updateMyAvatar() {
 
 // ─── Lista de conversas ───────────────────────────────────────
 function renderConvoList() {
-  // Grupos
+  // Grupos dinâmicos
   const groupList = document.getElementById("waGroupList");
   if (groupList) {
     groupList.innerHTML = _groupsList.map(g => {
@@ -2379,10 +2383,13 @@ function renderConvoList() {
         </div>
       </div>`;
     }).join("");
-    groupList.querySelectorAll(".wa-convo-item").forEach(el =>
-      el.addEventListener("click", () => switchChannel(el.dataset.channel, el.dataset.name, el.dataset.type))
-    );
+    // Delegação de evento — um único listener no container, nunca acumula
+    groupList.onclick = (e) => {
+      const item = e.target.closest(".wa-convo-item");
+      if (item) switchChannel(item.dataset.channel, item.dataset.name, item.dataset.type);
+    };
   }
+
   // Usuários online
   const userList = document.getElementById("waUserList");
   if (userList) {
@@ -2402,16 +2409,23 @@ function renderConvoList() {
           </div>
         </div>`;
       }).join("");
-      userList.querySelectorAll(".wa-convo-item").forEach(el =>
-        el.addEventListener("click", () => switchChannel(el.dataset.channel, el.dataset.name, el.dataset.type))
-      );
     }
+    // Delegação de evento — um único listener no container
+    userList.onclick = (e) => {
+      const item = e.target.closest(".wa-convo-item");
+      if (item) switchChannel(item.dataset.channel, item.dataset.name, item.dataset.type);
+    };
+  }
+
+  // Atualizar classe active no item fixo do Geral
+  const geralItem = document.getElementById("waGeralItem");
+  if (geralItem) {
+    geralItem.classList.toggle("active", _activeChannel === "geral");
   }
 }
 
 // ─── Trocar canal ─────────────────────────────────────────────
 window.switchChannel = function switchChannel(channel, name, type) {
-  console.log('[DIAG] switchChannel chamado:', channel, name);
   // 1. Cancelar listener anterior
   if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
 
@@ -2444,10 +2458,8 @@ window.switchChannel = function switchChannel(channel, name, type) {
   // 6. Registrar novo listener — busca #waMsgsArea no momento do callback (DOM já estará pronto)
   const capturedChannel = channel;
   const renderForThis = (msgs) => {
-    console.log('[DIAG] renderForThis chamado, canal=', capturedChannel, 'msgs=', msgs ? msgs.length : 0, '_activeChannel=', _activeChannel);
     if (_activeChannel !== capturedChannel) return;
     const area = document.getElementById("waMsgsArea");
-    console.log('[DIAG] waMsgsArea encontrado=', !!area);
     renderWaMsgs(msgs, area);
   };
 
@@ -2464,7 +2476,6 @@ window.switchChannel = function switchChannel(channel, name, type) {
 
 // ─── Renderizar mensagens ─────────────────────────────────────
 function renderWaMsgs(msgs, area) {
-  console.log('[DIAG] renderWaMsgs chamado, area=', !!area, 'msgs=', msgs ? msgs.length : 0);
   if (!area) return;
   const myUid  = getChatUid();
   const myName = getChatName();
@@ -2585,7 +2596,6 @@ function initWaPresence() {
 
 // ─── Inicialização ────────────────────────────────────────────
 function initWaChat() {
-  console.log('[DIAG] initWaChat chamado, _fbChatListen=', !!window._fbChatListen, '_currentUser=', !!window._currentUser, '_chatInited=', _chatInited);
   if (!window._fbChatListen || !window._currentUser) return;
   // Sempre abre o canal geral na primeira vez ou após novo login
   if (!_chatInited) {
@@ -3133,16 +3143,13 @@ window.doLogout = async function() {
 };
 
 function initAuth() {
-  console.log('[DIAG] initAuth chamado, _fbAuth=', !!window._fbAuth, '_firebaseReady=', !!window._firebaseReady);
   if(!window._fbAuth || !window._firebaseReady) {
-    console.log('[DIAG] initAuth aguardando firebase-ready...');
     window.addEventListener('firebase-ready', initAuth, { once: true });
     return;
   }
 
   // Auth state listener
   window._fbAuth.onAuthChange(user => {
-    console.log('[DIAG] onAuthChange disparou, user=', user ? user.email : 'null');
     window._currentUser = user;
     if(user) {
       document.getElementById("authOverlay").style.display = "none";
