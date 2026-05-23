@@ -2563,13 +2563,17 @@ async function waSend(text, mediaUrl = null, isSticker = false) {
     ts:        Date.now(),
     isSticker: isSticker || false
   };
+  console.log('[SEND] canal=', _activeChannel, 'texto=', text, 'user=', getChatName(), getChatUid());
   try {
     if (_activeChannel === "geral") {
       if (window._fbChatSend) await window._fbChatSend(msg);
+      else console.error('[SEND] _fbChatSend não existe!');
     } else {
       if (window._fbChannelSend) await window._fbChannelSend(_activeChannel, msg);
+      else console.error('[SEND] _fbChannelSend não existe!');
     }
-  } catch(e) { alert("Erro ao enviar: " + e.message); }
+    console.log('[SEND] mensagem enviada com sucesso');
+  } catch(e) { console.error('[SEND] erro:', e); alert("Erro ao enviar: " + e.message); }
 }
 
 // ─── Presença ─────────────────────────────────────────────────
