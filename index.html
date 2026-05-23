@@ -61,11 +61,14 @@
 
   // ── Grupos ──
   const groupsRef = ref(db, 'ficr_groups');
-  window._fbGroupsListen = (cb) => onValue(groupsRef, snap => {
-    const groups = [];
-    snap.forEach(child => groups.push({id: child.key, ...child.val()}));
-    cb(groups);
-  });
+  window._fbGroupsListen = (cb) => {
+    const unsub = onValue(groupsRef, snap => {
+      const groups = [];
+      snap.forEach(child => groups.push({id: child.key, ...child.val()}));
+      cb(groups);
+    });
+    return unsub;
+  };
   window._fbGroupCreate = (group) => push(groupsRef, group);
 
   // ── Perfis de usuário ──
@@ -74,26 +77,32 @@
     await s(ref(db, 'ficr_profiles/'+uid), profile);
   };
   window._fbProfileGet = (uid, cb) => onValue(ref(db, 'ficr_profiles/'+uid), snap => cb(snap.val()));
-  window._fbAllProfilesListen = (cb) => onValue(ref(db, 'ficr_profiles'), snap => {
-    const profiles = {};
-    snap.forEach(child => { profiles[child.key] = child.val(); });
-    cb(profiles);
-  });
+  window._fbAllProfilesListen = (cb) => {
+    const unsub = onValue(ref(db, 'ficr_profiles'), snap => {
+      const profiles = {};
+      snap.forEach(child => { profiles[child.key] = child.val(); });
+      cb(profiles);
+    });
+    return unsub;
+  };
 
   // ── Presença ──
   window._fbPresenceSet = async (uid, name) => {
     const {set: s} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
     await s(ref(db, 'ficr_presence/'+uid), {name, online: true, last: Date.now()});
   };
-  window._fbPresenceListen = (cb) => onValue(ref(db, 'ficr_presence'), snap => {
-    const online = {};
-    const now = Date.now();
-    snap.forEach(child => {
-      const d = child.val();
-      if(d.online && (now - (d.last||0)) < 120000) online[child.key] = d.name;
+  window._fbPresenceListen = (cb) => {
+    const unsub = onValue(ref(db, 'ficr_presence'), snap => {
+      const online = {};
+      const now = Date.now();
+      snap.forEach(child => {
+        const d = child.val();
+        if(d.online && (now - (d.last||0)) < 120000) online[child.key] = d.name;
+      });
+      cb(online);
     });
-    cb(online);
-  });
+    return unsub;
+  };
 
   // ── updateProfile exposto ──
   window._fbUpdateDisplayName = async (name) => {
@@ -2476,6 +2485,7 @@ window.switchChannel = function switchChannel(channel, name, type) {
 
 // ─── Renderizar mensagens ─────────────────────────────────────
 function renderWaMsgs(msgs, area) {
+  console.log('[MSG] area=', !!area, '| msgs recebidas=', JSON.stringify(msgs ? msgs.slice(0,2) : null));
   if (!area) return;
   const myUid  = getChatUid();
   const myName = getChatName();
@@ -2558,6 +2568,12 @@ async function waSend(text, mediaUrl = null, isSticker = false) {
 }
 
 // ─── Presença ─────────────────────────────────────────────────
+let _presenceUnsubs = [];
+function _cancelPresenceListeners() {
+  _presenceUnsubs.forEach(fn => { try { fn(); } catch(e) {} });
+  _presenceUnsubs = [];
+}
+
 function initWaPresence() {
   const user = window._currentUser;
   if (!user || !window._fbPresenceSet) return;
@@ -2567,26 +2583,29 @@ function initWaPresence() {
   window._fbPresenceSet(user.uid, getChatName());
 
   if (window._fbPresenceListen) {
-    window._fbPresenceListen(online => {
+    const u = window._fbPresenceListen(online => {
       _onlineUsers = online;
       renderConvoList();
       const sub = document.getElementById("waChatHeaderSub");
       if (sub && _activeChannelType === "group")
         sub.textContent = `${Object.keys(online).length} online`;
     });
+    if (u) _presenceUnsubs.push(u);
   }
   if (window._fbAllProfilesListen) {
-    window._fbAllProfilesListen(profiles => {
+    const u = window._fbAllProfilesListen(profiles => {
       _allProfiles = profiles;
       updateMyAvatar();
       renderConvoList();
     });
+    if (u) _presenceUnsubs.push(u);
   }
   if (window._fbGroupsListen) {
-    window._fbGroupsListen(groups => {
+    const u = window._fbGroupsListen(groups => {
       _groupsList = groups;
       renderConvoList();
     });
+    if (u) _presenceUnsubs.push(u);
   }
   setInterval(() => {
     if (window._currentUser && window._fbPresenceSet)
@@ -3166,6 +3185,7 @@ function initAuth() {
       // Reset chat state so re-login reinitializes
       _chatInited = false;
       _presenceInited = false;
+      _cancelPresenceListeners();
       if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
     }
   });
