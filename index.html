@@ -1642,6 +1642,10 @@ function switchTab(id) {
   document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add("active");
   document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-"+id)?.classList.add("active");
+  // Ao abrir a aba chat: reinicia o canal ativo para garantir que as mensagens apareçam
+  if (id === "chat" && typeof switchChannel === "function" && window._activeChannelRef) {
+    switchChannel(window._activeChannelRef.channel, window._activeChannelRef.name, window._activeChannelRef.type);
+  }
 }
 
 // ---- LANGUAGE TABS ----
@@ -2435,6 +2439,8 @@ function renderConvoList() {
 
 // ─── Trocar canal ─────────────────────────────────────────────
 window.switchChannel = function switchChannel(channel, name, type) {
+  // Salvar referência do canal ativo para re-render ao voltar para a aba
+  window._activeChannelRef = { channel, name, type };
   // 1. Cancelar listener anterior
   if (_channelUnsub) { try { _channelUnsub(); } catch(e) {} _channelUnsub = null; }
 
@@ -2485,7 +2491,6 @@ window.switchChannel = function switchChannel(channel, name, type) {
 
 // ─── Renderizar mensagens ─────────────────────────────────────
 function renderWaMsgs(msgs, area) {
-  console.log('[MSG] area=', !!area, '| msgs recebidas=', JSON.stringify(msgs ? msgs.slice(0,2) : null));
   if (!area) return;
   const myUid  = getChatUid();
   const myName = getChatName();
