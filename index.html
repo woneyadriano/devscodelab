@@ -2355,6 +2355,7 @@ let _activeChannel     = "geral";
 let _activeChannelName = "Grupo Geral Devs";
 let _activeChannelType = "group";
 let _channelUnsub      = null;
+let _channelVersion    = 0;
 let _allProfiles       = {};
 let _onlineUsers       = {};
 let _groupsList        = [];
@@ -2466,14 +2467,14 @@ window.switchChannel = function switchChannel(channel, name, type) {
   if (headerSub) headerSub.textContent = type === "group"
     ? `${Object.keys(_onlineUsers).length} online` : "Conversa privada";
 
-  // 5. Limpar área de mensagens (tenta agora, mas pode ainda não existir no DOM)
+  // 5. Limpar área de mensagens
   const areaNow = document.getElementById("waMsgsArea");
   if (areaNow) areaNow.innerHTML = `<div class="bubble bubble-system">🔄 Carregando mensagens...</div>`;
 
-  // 6. Registrar novo listener — busca #waMsgsArea no momento do callback (DOM já estará pronto)
-  const capturedChannel = channel;
+  // 6. Registrar novo listener com versão incremental — evita problema de closure stale
+  const myVersion = ++_channelVersion;
   const renderForThis = (msgs) => {
-    if (_activeChannel !== capturedChannel) return;
+    if (_channelVersion !== myVersion) return; // versão antiga, ignorar
     const area = document.getElementById("waMsgsArea");
     renderWaMsgs(msgs, area);
   };
@@ -2563,7 +2564,6 @@ async function waSend(text, mediaUrl = null, isSticker = false) {
     ts:        Date.now(),
     isSticker: isSticker || false
   };
-  console.log('[SEND] canal=', _activeChannel, 'texto=', text, 'user=', getChatName(), getChatUid());
   try {
     if (_activeChannel === "geral") {
       if (window._fbChatSend) await window._fbChatSend(msg);
@@ -2572,7 +2572,6 @@ async function waSend(text, mediaUrl = null, isSticker = false) {
       if (window._fbChannelSend) await window._fbChannelSend(_activeChannel, msg);
       else console.error('[SEND] _fbChannelSend não existe!');
     }
-    console.log('[SEND] mensagem enviada com sucesso');
   } catch(e) { console.error('[SEND] erro:', e); alert("Erro ao enviar: " + e.message); }
 }
 
