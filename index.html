@@ -1265,9 +1265,6 @@ footer { text-align: center; padding: 1rem; border-top: 1px solid var(--border);
 
 <style>
 /* ===== DEVS CODE LAB UNIVERSITY UPDATE ===== */
-.chat-wrap,.wa-shell,[class*="chat-"],[id*="chat"]{
-  display:none !important;
-}
 .learning-university{
   margin:2rem auto;
   max-width:1400px;
@@ -1702,19 +1699,6 @@ function showQuizResult(button,message){
   const box = button.parentElement.querySelector('.quiz-result-text');
   box.innerHTML = message;
 }
-
-document.addEventListener('DOMContentLoaded',()=>{
-  const removeSelectors = [
-    '.chat-wrap',
-    '.wa-shell'
-  ];
-
-  removeSelectors.forEach(selector=>{
-    document.querySelectorAll(selector).forEach(el=>{
-      el.style.display='none';
-    });
-  });
-});
 </script>
 
 </footer>
