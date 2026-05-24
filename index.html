@@ -3638,8 +3638,20 @@ window.doLogout = async function() {
 };
 
 function initAuth() {
+  // Garante que o DOM está pronto E o Firebase está inicializado
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAuth, { once: true });
+    return;
+  }
   if(!window._fbAuth || !window._firebaseReady) {
     window.addEventListener('firebase-ready', initAuth, { once: true });
+    return;
+  }
+
+  // Verifica que os elementos do DOM realmente existem antes de registrar listeners
+  if(!document.getElementById('loginBtn') || !document.getElementById('registerBtn')) {
+    // DOM ainda não renderizou os elementos — aguarda um tick
+    setTimeout(initAuth, 50);
     return;
   }
 
@@ -3742,9 +3754,17 @@ function initAuth() {
   });
 }
 
-// Start auth when firebase is ready
-if(window._firebaseReady && window._fbAuth) { initAuth(); }
-else { window.addEventListener('firebase-ready', initAuth, { once: true }); }
+// Start auth when both DOM and Firebase are ready
+function _tryInitAuth() {
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _tryInitAuth, { once: true });
+  } else if(!window._firebaseReady || !window._fbAuth) {
+    window.addEventListener('firebase-ready', _tryInitAuth, { once: true });
+  } else {
+    initAuth();
+  }
+}
+_tryInitAuth();
 
 // ============================================================
 // HELPERS
