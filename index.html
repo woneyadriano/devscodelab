@@ -2485,6 +2485,130 @@ function sanitize(str) {
 };
 
 // ============================================================
+// ENRIQUECIMENTO DA ABA HTML — Conteúdo estilo faculdade
+// ============================================================
+(function enriquecerHtmlUniversidade(){
+  if(!window.HTML_LEVELS && typeof HTML_LEVELS === 'undefined') return;
+  const extra = {
+    aprendiz: [
+      {title:"História do HTML — da Web 1.0 ao HTML5",icon:"📜",content:`<p>O HTML nasceu junto com a Web. Em 1991, Tim Berners-Lee publicou as primeiras ideias de páginas com hipertexto para conectar documentos científicos. As primeiras versões tinham poucas tags, mas já traziam a ideia que mudou o mundo: documentos conectados por links.</p><p>Com o crescimento da internet, surgiram versões como HTML 2.0, 3.2 e 4.01. Depois, a Web precisou de multimídia, formulários melhores, semântica e APIs modernas. Por isso o HTML5 se tornou o padrão atual, trazendo <strong>audio, video, canvas, tags semânticas, armazenamento local e integração com JavaScript</strong>.</p><div class="code-block"><pre>&lt;!-- Web antiga: muitas tabelas e pouca semântica --&gt;
+&lt;div id="cabecalho"&gt;Meu Site&lt;/div&gt;
+
+&lt;!-- HTML moderno: significado claro --&gt;
+&lt;header&gt;Meu Site&lt;/header&gt;
+&lt;main&gt;Conteúdo principal&lt;/main&gt;
+&lt;footer&gt;Rodapé&lt;/footer&gt;</pre></div>`},
+      {title:"Como o navegador lê uma página",icon:"🧭",content:`<p>Quando o navegador recebe um arquivo HTML, ele cria uma árvore chamada <strong>DOM</strong>. Cada tag vira um nó dessa árvore. Depois o navegador baixa CSS, imagens e scripts, calcula o layout e pinta tudo na tela.</p><p>Entender essa sequência ajuda a escrever páginas mais rápidas e organizadas: HTML bem estruturado facilita SEO, acessibilidade, performance e manutenção.</p><div class="code-block"><pre>&lt;article&gt;
+  &lt;h2&gt;Notícia&lt;/h2&gt;
+  &lt;p&gt;Texto da notícia...&lt;/p&gt;
+&lt;/article&gt;
+
+DOM simplificado:
+article
+ ├─ h2
+ └─ p</pre></div>`},
+      {title:"Caminhos de arquivos: relativo, absoluto e âncoras",icon:"🗂️",content:`<p>Sites reais possuem várias pastas. Saber escrever caminhos evita imagens quebradas e links errados.</p><div class="code-block"><pre>&lt;!-- Mesmo diretório --&gt;
+&lt;img src="logo.png" alt="Logo"&gt;
+
+&lt;!-- Pasta filha --&gt;
+&lt;img src="img/banner.jpg" alt="Banner"&gt;
+
+&lt;!-- Voltar uma pasta --&gt;
+&lt;a href="../index.html"&gt;Voltar&lt;/a&gt;
+
+&lt;!-- Link absoluto --&gt;
+&lt;a href="https://developer.mozilla.org/"&gt;MDN&lt;/a&gt;
+
+&lt;!-- Âncora interna --&gt;
+&lt;a href="#contato"&gt;Ir para contato&lt;/a&gt;</pre></div>`}
+    ],
+    iniciante: [
+      {title:"Validação de formulários sem JavaScript",icon:"✅",content:`<p>O HTML possui validações nativas. Antes mesmo de usar JavaScript, você pode exigir campos, limitar tamanho, validar e-mail, números e padrões.</p><div class="code-block"><pre>&lt;form&gt;
+  &lt;label for="email"&gt;E-mail&lt;/label&gt;
+  &lt;input id="email" type="email" required&gt;
+
+  &lt;label for="senha"&gt;Senha&lt;/label&gt;
+  &lt;input id="senha" type="password" minlength="8" required&gt;
+
+  &lt;label for="idade"&gt;Idade&lt;/label&gt;
+  &lt;input id="idade" type="number" min="14" max="100"&gt;
+
+  &lt;button type="submit"&gt;Criar conta&lt;/button&gt;
+&lt;/form&gt;</pre></div><p>Boa prática: validação no HTML melhora experiência, mas o servidor também deve validar tudo por segurança.</p>`},
+      {title:"Acessibilidade prática: labels, foco e teclado",icon:"♿",content:`<p>Uma página profissional precisa funcionar para leitores de tela, navegação por teclado e usuários com diferentes necessidades. HTML semântico é o primeiro passo.</p><div class="code-block"><pre>&lt;label for="busca"&gt;Buscar curso&lt;/label&gt;
+&lt;input id="busca" name="busca" type="search"&gt;
+
+&lt;button type="button" aria-label="Abrir menu principal"&gt;
+  ☰
+&lt;/button&gt;
+
+&lt;a href="#conteudo" class="skip-link"&gt;Pular para o conteúdo&lt;/a&gt;
+&lt;main id="conteudo"&gt;...&lt;/main&gt;</pre></div><p>Evite criar botões com <code>&lt;div&gt;</code>. Use <code>&lt;button&gt;</code>, porque ele já tem foco, clique por teclado e semântica correta.</p>`},
+      {title:"Organização de um projeto HTML real",icon:"📁",content:`<p>Em projetos reais, os arquivos ficam separados para facilitar manutenção.</p><div class="code-block"><pre>meu-site/
+├─ index.html
+├─ sobre.html
+├─ contato.html
+├─ css/
+│  └─ style.css
+├─ js/
+│  └─ app.js
+└─ img/
+   ├─ logo.svg
+   └─ banner.webp</pre></div><p>O <code>index.html</code> normalmente é a página inicial. Arquivos CSS ficam em pasta própria, JavaScript em outra e imagens em formatos leves como WebP/SVG quando possível.</p>`}
+    ],
+    intermediario: [
+      {title:"SEO técnico dentro do HTML",icon:"🔎",content:`<p>SEO não é só texto bonito. O HTML precisa explicar claramente o conteúdo para buscadores e redes sociais.</p><div class="code-block"><pre>&lt;head&gt;
+  &lt;title&gt;Curso de HTML Completo | Devs Code Lab&lt;/title&gt;
+  &lt;meta name="description" content="Aprenda HTML do zero ao avançado com exemplos, projetos e avaliações."&gt;
+  &lt;link rel="canonical" href="https://site.com/html"&gt;
+
+  &lt;meta property="og:title" content="Curso de HTML Completo"&gt;
+  &lt;meta property="og:description" content="Módulos, exemplos e avaliação."&gt;
+  &lt;meta property="og:image" content="https://site.com/img/html-card.png"&gt;
+&lt;/head&gt;</pre></div><p>Também use hierarquia correta de títulos, textos alternativos em imagens e links descritivos.</p>`},
+      {title:"Responsividade começa no HTML",icon:"📱",content:`<p>Responsividade não depende apenas de CSS. O HTML precisa ter viewport, imagens flexíveis e estrutura limpa.</p><div class="code-block"><pre>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+
+&lt;picture&gt;
+  &lt;source media="(min-width: 900px)" srcset="banner-grande.webp"&gt;
+  &lt;source media="(min-width: 500px)" srcset="banner-medio.webp"&gt;
+  &lt;img src="banner-pequeno.webp" alt="Pessoa estudando programação"&gt;
+&lt;/picture&gt;</pre></div><p>A tag <code>&lt;picture&gt;</code> permite entregar imagens diferentes para telas diferentes, economizando dados no celular.</p>`},
+      {title:"Boas práticas de manutenção",icon:"🧼",content:`<p>HTML profissional precisa ser legível. Use nomes claros, indentação, comentários úteis e evite misturar responsabilidade visual com estrutura.</p><div class="code-block"><pre>&lt;!-- Ruim: sem significado --&gt;
+&lt;div class="caixa1"&gt;&lt;div&gt;Título&lt;/div&gt;&lt;/div&gt;
+
+&lt;!-- Melhor: semântica + classe descritiva --&gt;
+&lt;section class="course-card" aria-labelledby="html-title"&gt;
+  &lt;h2 id="html-title"&gt;Curso de HTML&lt;/h2&gt;
+  &lt;p&gt;Aprenda estrutura, semântica e acessibilidade.&lt;/p&gt;
+&lt;/section&gt;</pre></div>`}
+    ],
+    avancado: [
+      {title:"HTML para aplicações modernas",icon:"🏢",content:`<p>Em aplicações de grande escala, o HTML precisa conversar com componentes, acessibilidade, SEO, estado de aplicação e segurança. Mesmo usando React, Vue ou Angular, o resultado final continua sendo HTML renderizado no navegador.</p><div class="code-block"><pre>&lt;main aria-live="polite"&gt;
+  &lt;section aria-labelledby="dashboard-title"&gt;
+    &lt;h1 id="dashboard-title"&gt;Dashboard&lt;/h1&gt;
+    &lt;button type="button" aria-expanded="false" aria-controls="filtros"&gt;
+      Filtros
+    &lt;/button&gt;
+    &lt;aside id="filtros" hidden&gt;...&lt;/aside&gt;
+  &lt;/section&gt;
+&lt;/main&gt;</pre></div><p>Atributos ARIA devem complementar a semântica, não substituir tags corretas.</p>`},
+      {title:"Performance: pré-carregamento e prioridade",icon:"⚡",content:`<p>O HTML pode orientar o navegador sobre quais recursos são mais importantes.</p><div class="code-block"><pre>&lt;link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin&gt;
+&lt;link rel="preconnect" href="https://fonts.gstatic.com" crossorigin&gt;
+&lt;link rel="dns-prefetch" href="https://cdn.exemplo.com"&gt;
+
+&lt;img src="hero.webp" alt="Curso de programação" width="1200" height="600" fetchpriority="high"&gt;
+&lt;img src="galeria.webp" alt="Galeria" loading="lazy" decoding="async"&gt;</pre></div><p>Use com cuidado: priorizar tudo é igual a não priorizar nada.</p>`},
+      {title:"Checklist de revisão profissional",icon:"🎓",content:`<ul style="padding-left:1.2rem;line-height:2"><li>Existe apenas um <code>&lt;h1&gt;</code> principal?</li><li>Imagens importantes possuem <code>alt</code> útil?</li><li>Formulários possuem <code>label</code> conectado ao campo?</li><li>Links externos usam <code>rel="noopener noreferrer"</code>?</li><li>A página funciona sem mouse?</li><li>O HTML passa por validação?</li><li>O conteúdo tem semântica clara para buscadores?</li><li>Scripts estão com <code>defer</code> quando necessário?</li></ul><p>Esse checklist aproxima seu código do padrão usado em equipes profissionais.</p>`}
+    ]
+  };
+  Object.keys(extra).forEach(k=>{
+    if(HTML_LEVELS[k] && Array.isArray(HTML_LEVELS[k].topics)) {
+      HTML_LEVELS[k].topics = HTML_LEVELS[k].topics.concat(extra[k]);
+    }
+  });
+})();
+
+// ============================================================
 // BUILD TABS
 // ============================================================
 const tabsNav = document.getElementById("tabsNav");
@@ -2515,174 +2639,155 @@ addTabBtn("html","fab fa-html5","HTML 🏫", true);
 
   const levelKeys = ["aprendiz","iniciante","intermediario","avancado"];
   let activeLvl = "aprendiz";
+  let htmlMode = "aulas";
   let htmlQuizState = {};
+
+  function htmlUserKey(){
+    const u = window._currentUser;
+    return u?.uid || u?.email || "visitante";
+  }
+  function progressKey(){ return "devscode_html_progress_" + htmlUserKey(); }
+  function getProgress(){
+    try { return JSON.parse(localStorage.getItem(progressKey()) || "{}"); }
+    catch(e){ return {}; }
+  }
+  function saveProgress(data){ localStorage.setItem(progressKey(), JSON.stringify(data)); }
+  function markLessonsViewed(level){
+    const p = getProgress();
+    p[level] = p[level] || {};
+    p[level].lessonsViewed = true;
+    p[level].viewedAt = new Date().toISOString();
+    saveProgress(p);
+  }
+  function saveScore(level, score, total){
+    const p = getProgress();
+    p[level] = p[level] || {};
+    const grade = Number(((score/total)*10).toFixed(1));
+    p[level].bestGrade = Math.max(p[level].bestGrade || 0, grade);
+    p[level].approved = p[level].bestGrade >= 7;
+    p[level].lastScore = score;
+    p[level].total = total;
+    p[level].lastAttemptAt = new Date().toISOString();
+    saveProgress(p);
+    return p[level];
+  }
+  function isUnlocked(level){
+    const idx = levelKeys.indexOf(level);
+    if(idx <= 0) return true;
+    const prev = levelKeys[idx-1];
+    const p = getProgress();
+    return !!(p[prev]?.lessonsViewed && p[prev]?.approved);
+  }
+  function nextLevel(level){ return levelKeys[levelKeys.indexOf(level)+1]; }
+  function levelStatus(level){
+    const p = getProgress()[level] || {};
+    if(!isUnlocked(level)) return "🔒 Bloqueado";
+    if(p.approved) return `✅ Aprovado — nota ${p.bestGrade}`;
+    if(p.lessonsViewed) return "📚 Aulas vistas — faça a avaliação";
+    return "▶️ Liberado";
+  }
 
   function renderHtmlTab() {
     const lvl = HTML_LEVELS[activeLvl];
+    const progress = getProgress();
+    const currentProgress = progress[activeLvl] || {};
+    const locked = !isUnlocked(activeLvl);
+    const prevLevel = levelKeys[levelKeys.indexOf(activeLvl)-1];
     div.innerHTML = `
       <style>
         .html-hero{background:linear-gradient(135deg,rgba(37,211,102,.07),rgba(59,130,246,.05));border:1px solid rgba(37,211,102,.18);border-radius:20px;padding:1.4rem 1.6rem;margin-bottom:1.4rem;position:relative;overflow:hidden}
         .html-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(37,211,102,.12),transparent 70%);border-radius:50%}
         .html-hero h2{font-size:1.4rem;font-weight:800;background:linear-gradient(90deg,#25D366,#3b82f6);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.3rem}
-        .html-level-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.4rem}
-        .html-lvl-btn{border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;padding:7px 16px;border-radius:40px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:5px}
-        .html-lvl-btn:hover{border-color:var(--green);color:var(--text)}
-        .html-lvl-btn.active{color:white;border-color:transparent}
-        .topic-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.3rem;margin-bottom:1rem;transition:border-color .2s}
-        .topic-card:hover{border-color:rgba(37,211,102,.3)}
-        .topic-header{display:flex;align-items:center;gap:10px;margin-bottom:.9rem;cursor:pointer}
-        .topic-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-        .topic-title-txt{font-size:1rem;font-weight:700}
-        .topic-body{font-size:.85rem;line-height:1.8;color:var(--text-muted)}
-        .topic-body p{margin-bottom:.7rem;color:var(--text-muted)}
-        .topic-body strong{color:var(--text)}
-        .topic-body code{background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:var(--green);border-radius:5px;padding:1px 5px;font-family:'Space Mono',monospace;font-size:.78rem}
-        .topic-body ul{margin:.5rem 0}
-        .topic-body .code-block{margin:.8rem 0}
-        .topic-toggle{margin-left:auto;color:var(--text-muted);font-size:.75rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:3px 10px;cursor:pointer}
-        .html-quiz-area{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.4rem;margin-top:1.2rem}
-        .html-quiz-area h3{font-size:1rem;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
-        .hq-item{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.8rem}
-        .hq-text{font-size:.88rem;font-weight:600;margin-bottom:.6rem}
-        .hq-opts{display:flex;flex-wrap:wrap;gap:6px}
-        .hq-opt{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:40px;padding:5px 14px;font-size:.78rem;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;font-weight:600}
-        .hq-opt:hover{border-color:var(--green);color:var(--green)}
-        .hq-opt.selected{background:var(--dark-green);color:white;border-color:var(--green)}
-        .hq-opt.correct{background:#16a34a;color:white;border-color:#22c55e}
-        .hq-opt.wrong{background:#b91c1c;color:white;border-color:#ef4444}
-        .hq-result{background:linear-gradient(135deg,rgba(37,211,102,.1),rgba(7,94,84,.2));border:1px solid var(--green);border-radius:14px;padding:1rem;text-align:center;margin-top:1rem;font-size:1rem;font-weight:700}
-        .progress-pills{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap}
-        .pill{width:28px;height:8px;border-radius:40px;background:var(--border);transition:.3s}
-        .pill.done{background:var(--green)}
+        .html-level-nav,.html-mode-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem}
+        .html-lvl-btn,.html-mode-btn{border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;padding:7px 16px;border-radius:40px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px}
+        .html-lvl-btn:hover,.html-mode-btn:hover{border-color:var(--green);color:var(--text)}
+        .html-lvl-btn.active,.html-mode-btn.active{color:white;border-color:var(--green);background:rgba(37,211,102,.12)}
+        .html-lvl-btn.locked{opacity:.55;filter:saturate(.5)}
+        .html-dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;margin-bottom:1.1rem}
+        .html-stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:.9rem}.html-stat b{display:block;font-size:1.1rem;color:var(--green);margin-bottom:.2rem}.html-stat span{font-size:.72rem;color:var(--text-muted)}
+        .topic-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.3rem;margin-bottom:1rem;transition:border-color .2s}.topic-card:hover{border-color:rgba(37,211,102,.3)}
+        .topic-header{display:flex;align-items:center;gap:10px;margin-bottom:.9rem;cursor:pointer}.topic-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}.topic-title-txt{font-size:1rem;font-weight:700}.topic-body{font-size:.85rem;line-height:1.8;color:var(--text-muted)}.topic-body p{margin-bottom:.7rem;color:var(--text-muted)}.topic-body strong{color:var(--text)}.topic-body code{background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:var(--green);border-radius:5px;padding:1px 5px;font-family:'Space Mono',monospace;font-size:.78rem}.topic-body .code-block{margin:.8rem 0}.topic-toggle{margin-left:auto;color:var(--text-muted);font-size:.75rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:3px 10px;cursor:pointer}
+        .html-quiz-area{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.4rem;margin-top:1.2rem}.html-quiz-area h3{font-size:1rem;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px}.hq-item{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.8rem}.hq-text{font-size:.88rem;font-weight:600;margin-bottom:.6rem}.hq-opts{display:flex;flex-wrap:wrap;gap:6px}.hq-opt{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:40px;padding:5px 14px;font-size:.78rem;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;font-weight:600}.hq-opt:hover{border-color:var(--green);color:var(--green)}.hq-opt.selected{background:var(--dark-green);color:white;border-color:var(--green)}.hq-opt.correct{background:#16a34a;color:white;border-color:#22c55e}.hq-opt.wrong{background:#b91c1c;color:white;border-color:#ef4444}.hq-result{background:linear-gradient(135deg,rgba(37,211,102,.1),rgba(7,94,84,.2));border:1px solid var(--green);border-radius:14px;padding:1rem;text-align:center;margin-top:1rem;font-size:1rem;font-weight:700}.progress-pills{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap}.pill{width:28px;height:8px;border-radius:40px;background:var(--border);transition:.3s}.pill.done{background:var(--green)}
+        .locked-panel{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(239,68,68,.08));border:1px solid rgba(251,191,36,.35);border-radius:18px;padding:1.3rem;color:#fde68a;line-height:1.7}.approved-panel{background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.28);border-radius:16px;padding:1rem;color:var(--green);margin-bottom:1rem}
       </style>
 
       <div class="html-hero">
         <div style="font-size:.65rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:.3rem"><i class="fab fa-html5"></i> HTML — MATERIAL DIDÁTICO COMPLETO</div>
-        <h2>Do Treinee ao Staff Engineer</h2>
-        <p style="color:var(--text-muted);font-size:.85rem">Escolha seu nível abaixo. Cada módulo contém teoria profunda, exemplos reais de código e quiz para testar seu conhecimento.</p>
+        <h2>HTML - TRILHA DE CARREIRA</h2>
+        <p style="color:var(--text-muted);font-size:.85rem;line-height:1.7">Trilha em formato de faculdade: estude as aulas, depois vá em <strong>Realize a avaliação</strong>. Para liberar o próximo nível, é preciso ver as aulas e tirar pelo menos <strong>nota 7</strong>.</p>
+      </div>
+
+      <div class="html-dashboard">
+        <div class="html-stat"><b>${lvl.topics.length}</b><span>aulas neste nível</span></div>
+        <div class="html-stat"><b>${lvl.quiz.length}</b><span>questões na avaliação</span></div>
+        <div class="html-stat"><b>${currentProgress.bestGrade || "--"}</b><span>melhor nota</span></div>
+        <div class="html-stat"><b>${levelStatus(activeLvl)}</b><span>status do nível</span></div>
       </div>
 
       <div class="html-level-nav" id="htmlLevelNav">
         ${levelKeys.map(k=>{
-          const l = HTML_LEVELS[k];
-          const isActive = k===activeLvl;
-          return `<button class="html-lvl-btn${isActive?" active":""}" data-lvl="${k}" style="${isActive?`background:linear-gradient(135deg,${l.color}22,${l.color}11);border-color:${l.color};color:${l.color}`:''}">
-            ${l.label}
-          </button>`;
+          const l = HTML_LEVELS[k]; const isActive = k===activeLvl; const isLock = !isUnlocked(k);
+          return `<button class="html-lvl-btn${isActive?" active":""}${isLock?" locked":""}" data-lvl="${k}" title="${levelStatus(k)}" style="${isActive?`background:linear-gradient(135deg,${l.color}22,${l.color}11);border-color:${l.color};color:${l.color}`:''}">${isLock?'🔒 ':''}${l.label}</button>`;
         }).join("")}
       </div>
 
-      <div style="background:${lvl.bg};border:1px solid ${lvl.border};border-radius:14px;padding:1rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--text-muted);line-height:1.7">
-        <strong style="color:${lvl.color}">${lvl.label}</strong> — ${lvl.desc}
+      <div class="html-mode-nav">
+        <button class="html-mode-btn ${htmlMode==='aulas'?'active':''}" data-mode="aulas"><i class="fas fa-book-open"></i> Aulas do nível</button>
+        <button class="html-mode-btn ${htmlMode==='avaliacao'?'active':''}" data-mode="avaliacao"><i class="fas fa-graduation-cap"></i> Realize a avaliação</button>
       </div>
 
-      <div id="htmlTopicsArea">
-        ${lvl.topics.map((t,i)=>`
-          <div class="topic-card" id="topic-${i}">
-            <div class="topic-header" onclick="toggleTopic(${i})">
-              <div class="topic-icon" style="background:${lvl.bg};font-size:1.3rem">${t.icon}</div>
-              <div class="topic-title-txt">${t.title}</div>
-              <span class="topic-toggle" id="toggle-${i}">▼ Ver</span>
-            </div>
-            <div class="topic-body" id="topicBody-${i}" style="display:none">${t.content}</div>
-          </div>
-        `).join("")}
-      </div>
-
-      <div class="html-quiz-area">
-        <h3><i class="fas fa-brain" style="color:var(--green)"></i> Quiz — ${lvl.label} <span style="font-size:.72rem;color:var(--text-muted);font-weight:500">(${lvl.quiz.length} questões)</span></h3>
-        <div class="progress-pills" id="quizPills">
-          ${lvl.quiz.map((_,i)=>`<div class="pill" id="pill-${i}"></div>`).join("")}
-        </div>
-        <div id="htmlQuizBody">
-          ${lvl.quiz.map((q,qi)=>`
-            <div class="hq-item" id="hqItem-${qi}">
-              <div class="hq-text">${qi+1}. ${q.p}</div>
-              <div class="hq-opts">
-                ${q.opts.map((o,oi)=>`<button class="hq-opt" data-qi="${qi}" data-oi="${oi}" onclick="selectHqOpt(${qi},${oi})">${o}</button>`).join("")}
-              </div>
-              <div id="hqFeedback-${qi}" style="font-size:.78rem;margin-top:.4rem;display:none"></div>
-            </div>
-          `).join("")}
-        </div>
-        <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
-          <button class="btn btn-green" onclick="submitHtmlQuiz()"><i class="fas fa-check"></i> Corrigir Quiz</button>
-          <button class="btn btn-outline" onclick="resetHtmlQuiz()"><i class="fas fa-redo"></i> Tentar Novamente</button>
-        </div>
-        <div id="htmlQuizResult" style="display:none"></div>
-      </div>
+      ${locked ? `<div class="locked-panel"><strong>🔒 Conteúdo bloqueado.</strong><br>Para acessar <b>${lvl.label}</b>, conclua o nível anterior (${HTML_LEVELS[prevLevel]?.label || 'anterior'}): veja as aulas e tire nota mínima 7 na avaliação.</div>` : `
+        <div style="background:${lvl.bg};border:1px solid ${lvl.border};border-radius:14px;padding:1rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--text-muted);line-height:1.7"><strong style="color:${lvl.color}">${lvl.label}</strong> — ${lvl.desc}</div>
+        ${htmlMode==='aulas' ? `
+          <div class="approved-panel" style="display:${currentProgress.lessonsViewed?'block':'none'}">✅ Aulas deste nível marcadas como vistas. Agora faça a avaliação para liberar o próximo nível.</div>
+          <div id="htmlTopicsArea">${lvl.topics.map((t,i)=>`<div class="topic-card" id="topic-${i}"><div class="topic-header" onclick="toggleTopic(${i})"><div class="topic-icon" style="background:${lvl.bg};font-size:1.3rem">${t.icon}</div><div class="topic-title-txt">${i+1}. ${t.title}</div><span class="topic-toggle" id="toggle-${i}">▼ Ver aula</span></div><div class="topic-body" id="topicBody-${i}" style="display:none">${t.content}</div></div>`).join("")}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem"><button class="btn btn-green" onclick="markHtmlLessonsAndGoQuiz()"><i class="fas fa-check-circle"></i> Marcar aulas como vistas e realizar avaliação</button></div>` : `
+          ${!currentProgress.lessonsViewed ? `<div class="locked-panel" style="margin-bottom:1rem">⚠️ Antes da avaliação, clique em <strong>Aulas do nível</strong>, estude o conteúdo e marque as aulas como vistas.</div>` : ``}
+          <div class="html-quiz-area"><h3><i class="fas fa-brain" style="color:var(--green)"></i> Realize a avaliação — ${lvl.label} <span style="font-size:.72rem;color:var(--text-muted);font-weight:500">(${lvl.quiz.length} questões | nota mínima 7)</span></h3><div class="progress-pills" id="quizPills">${lvl.quiz.map((_,i)=>`<div class="pill" id="pill-${i}"></div>`).join("")}</div><div id="htmlQuizBody">${lvl.quiz.map((q,qi)=>`<div class="hq-item" id="hqItem-${qi}"><div class="hq-text">${qi+1}. ${q.p}</div><div class="hq-opts">${q.opts.map((o,oi)=>`<button class="hq-opt" data-qi="${qi}" data-oi="${oi}" onclick="selectHqOpt(${qi},${oi})">${o}</button>`).join("")}</div><div id="hqFeedback-${qi}" style="font-size:.78rem;margin-top:.4rem;display:none"></div></div>`).join("")}</div><div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap"><button class="btn btn-green" onclick="submitHtmlQuiz()" ${!currentProgress.lessonsViewed?'disabled style="opacity:.5;cursor:not-allowed"':''}><i class="fas fa-check"></i> Corrigir avaliação</button><button class="btn btn-outline" onclick="resetHtmlQuiz()"><i class="fas fa-redo"></i> Tentar novamente</button></div><div id="htmlQuizResult" style="display:none"></div></div>`}
+      `}
     `;
 
-    // Level switch buttons
-    div.querySelectorAll(".html-lvl-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        activeLvl = btn.dataset.lvl;
-        htmlQuizState = {};
-        renderHtmlTab();
-      });
-    });
+    div.querySelectorAll(".html-lvl-btn").forEach(btn => btn.addEventListener("click", () => {
+      activeLvl = btn.dataset.lvl; htmlMode = isUnlocked(activeLvl) ? "aulas" : "aulas"; htmlQuizState = {}; renderHtmlTab();
+    }));
+    div.querySelectorAll(".html-mode-btn").forEach(btn => btn.addEventListener("click", () => {
+      htmlMode = btn.dataset.mode; htmlQuizState = {}; renderHtmlTab();
+    }));
   }
 
   window.toggleTopic = function(i) {
-    const body = div.querySelector(`#topicBody-${i}`);
-    const tog  = div.querySelector(`#toggle-${i}`);
-    if(!body) return;
-    const open = body.style.display !== "none";
-    body.style.display = open ? "none" : "block";
-    tog.textContent = open ? "▼ Ver" : "▲ Fechar";
+    const body = div.querySelector(`#topicBody-${i}`); const tog = div.querySelector(`#toggle-${i}`); if(!body) return;
+    const open = body.style.display !== "none"; body.style.display = open ? "none" : "block"; if(tog) tog.textContent = open ? "▼ Ver aula" : "▲ Fechar aula";
   };
-
+  window.markHtmlLessonsAndGoQuiz = function(){ markLessonsViewed(activeLvl); htmlMode="avaliacao"; htmlQuizState={}; renderHtmlTab(); };
   window.selectHqOpt = function(qi, oi) {
     if(htmlQuizState[qi]?.answered) return;
     htmlQuizState[qi] = { selected: oi };
     div.querySelectorAll(`.hq-opt[data-qi="${qi}"]`).forEach(b => b.classList.remove("selected"));
     div.querySelector(`.hq-opt[data-qi="${qi}"][data-oi="${oi}"]`)?.classList.add("selected");
   };
-
   window.submitHtmlQuiz = function() {
-    const lvl = HTML_LEVELS[activeLvl];
-    let score = 0;
+    const currentProgress = getProgress()[activeLvl] || {};
+    if(!currentProgress.lessonsViewed){ alert("Você precisa marcar as aulas como vistas antes de realizar a avaliação."); return; }
+    const lvl = HTML_LEVELS[activeLvl]; let score = 0;
     lvl.quiz.forEach((q, qi) => {
-      const st = htmlQuizState[qi];
-      const sel = st?.selected;
-      const opts = div.querySelectorAll(`.hq-opt[data-qi="${qi}"]`);
-      opts.forEach(b => { b.classList.remove("selected","correct","wrong"); });
-      if(sel === undefined) {
-        const fb = div.querySelector(`#hqFeedback-${qi}`);
-        if(fb){ fb.textContent="⚠️ Questão não respondida"; fb.style.display="block"; fb.style.color="#fbbf24"; }
-        return;
-      }
-      if(sel === q.c) {
-        score++;
-        opts[sel].classList.add("correct");
-        const pill = div.querySelector(`#pill-${qi}`);
-        if(pill) pill.classList.add("done");
-      } else {
-        opts[sel].classList.add("wrong");
-        opts[q.c].classList.add("correct");
-      }
-      htmlQuizState[qi].answered = true;
+      const sel = htmlQuizState[qi]?.selected; const opts = div.querySelectorAll(`.hq-opt[data-qi="${qi}"]`);
+      opts.forEach(b => b.classList.remove("selected","correct","wrong"));
       const fb = div.querySelector(`#hqFeedback-${qi}`);
-      if(fb) {
-        fb.style.display="block";
-        fb.textContent = sel===q.c ? "✅ Correto!" : `❌ Resposta correta: ${q.opts[q.c]}`;
-        fb.style.color = sel===q.c ? "var(--green)" : "#f87171";
-      }
+      if(sel === undefined){ if(fb){ fb.textContent="⚠️ Questão não respondida"; fb.style.display="block"; fb.style.color="#fbbf24"; } return; }
+      if(sel === q.c){ score++; opts[sel]?.classList.add("correct"); div.querySelector(`#pill-${qi}`)?.classList.add("done"); }
+      else { opts[sel]?.classList.add("wrong"); opts[q.c]?.classList.add("correct"); }
+      htmlQuizState[qi].answered = true;
+      if(fb){ fb.style.display="block"; fb.textContent = sel===q.c ? "✅ Correto!" : `❌ Resposta correta: ${q.opts[q.c]}`; fb.style.color = sel===q.c ? "var(--green)" : "#f87171"; }
     });
-    const total = lvl.quiz.length;
-    const pct = Math.round((score/total)*100);
-    const emoji = pct===100?"🏆":pct>=70?"🎉":pct>=50?"💪":"📚";
-    const res = div.querySelector("#htmlQuizResult");
-    res.style.display = "block";
-    res.innerHTML = `<div class="hq-result">${emoji} Você acertou <strong>${score}/${total}</strong> — ${pct}%<br><span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">${pct===100?"Perfeito! Você domina este nível.":pct>=70?"Ótimo resultado! Revise os erros.":pct>=50?"Bom começo! Releia os tópicos.":"Não desanime — estude os tópicos e tente novamente!"}</span></div>`;
+    const total = lvl.quiz.length; const grade = Number(((score/total)*10).toFixed(1)); const pct = Math.round((score/total)*100); const saved = saveScore(activeLvl, score, total); const passed = grade >= 7; const nxt = nextLevel(activeLvl);
+    const res = div.querySelector("#htmlQuizResult"); res.style.display = "block";
+    res.innerHTML = `<div class="hq-result">${passed?'🎓':'📚'} Você acertou <strong>${score}/${total}</strong> — nota <strong>${grade}</strong><br><span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">${passed ? (nxt ? `Aprovado! O próximo nível foi liberado: ${HTML_LEVELS[nxt].label}.` : 'Aprovado! Você concluiu a trilha de HTML.') : 'Nota mínima 7 não alcançada. Revise as aulas e tente novamente.'} Melhor nota salva: ${saved.bestGrade}</span></div>`;
     res.scrollIntoView({behavior:"smooth",block:"nearest"});
   };
+  window.resetHtmlQuiz = function(){ htmlQuizState = {}; renderHtmlTab(); };
 
-  window.resetHtmlQuiz = function() {
-    htmlQuizState = {};
-    renderHtmlTab();
-  };
-
+  window.addEventListener('auth-state-ready', () => renderHtmlTab());
   renderHtmlTab();
   main.appendChild(div);
 })();
@@ -3701,6 +3806,159 @@ section:has(> h2 + p) { /* h2 filho direto seguido de p */ }
   }
 };
 
+
+
+// Enriquecimento da trilha CSS — mesmo padrão acadêmico da aba HTML
+(function enrichCssLevels(){
+  const extraTopics = {
+    aprendiz: [
+      {title:"História do CSS e evolução da Web visual",icon:"📜",content:`<p>O CSS surgiu para resolver um problema sério da Web inicial: páginas HTML misturavam conteúdo e aparência. Antes do CSS, era comum usar tags e atributos visuais espalhados pelo HTML, como <code>&lt;font&gt;</code>, tabelas para layout e cores diretamente no elemento.</p><p>A proposta do CSS foi separar responsabilidades: <strong>HTML estrutura</strong>, <strong>CSS apresenta</strong> e <strong>JavaScript interage</strong>. Isso deixa projetos mais profissionais, fáceis de manter e acessíveis.</p><div class="code-block"><pre>&lt;!-- Antigo: difícil de manter --&gt;
+&lt;font color="blue" size="5"&gt;Título&lt;/font&gt;
+
+/* Atual: semântico e reutilizável */
+h1 {
+  color: #2563eb;
+  font-size: 2rem;
+}</pre></div>`},
+      {title:"Cascata, herança e especificidade sem decorar fórmula",icon:"🧬",content:`<p>O nome CSS significa <strong>Cascading Style Sheets</strong>. A palavra cascata indica que várias regras podem disputar o mesmo elemento. O navegador decide usando origem da regra, importância, especificidade e ordem.</p><ul style="padding-left:1.2rem;line-height:2"><li><strong>Herança:</strong> algumas propriedades passam de pai para filho, como <code>color</code> e <code>font-family</code>.</li><li><strong>Especificidade:</strong> ID pesa mais que classe, classe pesa mais que tag.</li><li><strong>Ordem:</strong> se o peso for igual, vence a regra que aparece por último.</li></ul><div class="code-block"><pre>body { color: #e5e7eb; }
+p { color: gray; }
+.card p { color: white; }
+#descricao { color: #22c55e; }</pre></div><p>Neste exemplo, um parágrafo com <code>id="descricao"</code> vence as outras regras.</p>`},
+      {title:"Unidades: px, %, em, rem, vw, vh e clamp",icon:"📏",content:`<p>Um bom dev CSS entende unidades. <code>px</code> é fixo; <code>%</code> depende do elemento pai; <code>em</code> depende do tamanho da fonte atual; <code>rem</code> depende da raiz; <code>vw</code> e <code>vh</code> dependem da tela.</p><div class="code-block"><pre>:root { font-size: 16px; }
+.card { width: min(100%, 720px); padding: 1.5rem; }
+.titulo { font-size: clamp(1.8rem, 5vw, 4rem); }
+.hero { min-height: 70vh; }</pre></div><p><code>clamp()</code> é excelente para textos responsivos: define mínimo, valor flexível e máximo.</p>`}
+    ],
+    iniciante: [
+      {title:"Flexbox na prática: alinhamento sem sofrimento",icon:"🧲",content:`<p>Flexbox organiza itens em uma direção principal: linha ou coluna. É perfeito para menus, cards, botões, barras e pequenos layouts.</p><div class="code-block"><pre>.menu {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+}</pre></div><p>Regra mental: use Flexbox quando você quer alinhar itens em <strong>uma dimensão</strong>.</p>`},
+      {title:"Grid Layout: criando páginas profissionais",icon:"🧱",content:`<p>CSS Grid trabalha com linhas e colunas ao mesmo tempo. É ideal para dashboards, galerias, áreas com sidebar e layouts complexos.</p><div class="code-block"><pre>.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}</pre></div><p><code>auto-fit</code> + <code>minmax()</code> cria cards responsivos sem precisar escrever várias media queries.</p>`},
+      {title:"Pseudo-classes e pseudo-elementos",icon:"✨",content:`<p>Pseudo-classes representam estados; pseudo-elementos criam partes visuais extras sem adicionar HTML desnecessário.</p><div class="code-block"><pre>a:hover { color: #22c55e; }
+input:focus { outline: 2px solid #3b82f6; }
+li:first-child { font-weight: 700; }
+.card::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+}</pre></div>`}
+    ],
+    intermediario: [
+      {title:"Responsividade avançada e mobile-first",icon:"📱",content:`<p>Mobile-first significa começar pelo menor dispositivo e ir melhorando a experiência para telas maiores. Isso evita CSS pesado e melhora a manutenção.</p><div class="code-block"><pre>.container { padding: 1rem; }
+.grid { display: grid; gap: 1rem; }
+
+@media (min-width: 768px) {
+  .container { padding: 2rem; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .grid { grid-template-columns: repeat(3, 1fr); }
+}</pre></div>`},
+      {title:"Design tokens e variáveis CSS",icon:"🎛️",content:`<p>Variáveis CSS criam consistência visual. Em projetos grandes, cores, sombras, espaçamentos e raios devem virar tokens.</p><div class="code-block"><pre>:root {
+  --color-bg: #0b1120;
+  --color-surface: #111827;
+  --color-primary: #22c55e;
+  --space-1: .5rem;
+  --space-2: 1rem;
+  --radius-card: 20px;
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: var(--space-2);
+}</pre></div><p>Com tokens, trocar tema escuro/claro ou identidade visual fica muito mais simples.</p>`},
+      {title:"Acessibilidade visual em CSS",icon:"♿",content:`<p>CSS também influencia acessibilidade: contraste, foco visível, tamanho de fonte, espaçamento e redução de movimento.</p><div class="code-block"><pre>button:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}</pre></div><p>Nunca remova <code>outline</code> sem colocar outra indicação de foco.</p>`}
+    ],
+    avancado: [
+      {title:"Arquitetura CSS: BEM, utilitários e componentes",icon:"🏗️",content:`<p>Em projetos grandes, CSS sem padrão vira bagunça. Existem estratégias como BEM, CSS Modules, utilitários atômicos e componentização.</p><div class="code-block"><pre>/* BEM */
+.card {}
+.card__title {}
+.card__button {}
+.card__button--primary {}
+
+/* Componente reutilizável */
+.button {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+}</pre></div><p>O objetivo não é decorar metodologia: é evitar conflitos, repetição e CSS impossível de manter.</p>`},
+      {title:"Performance de CSS e renderização",icon:"⚡",content:`<p>CSS afeta diretamente a velocidade percebida. Seletores muito complexos, animações em propriedades erradas e arquivos enormes prejudicam a experiência.</p><div class="code-block"><pre>/* Melhor para animação */
+.modal { transform: translateY(20px); opacity: 0; }
+.modal.open { transform: translateY(0); opacity: 1; }
+
+/* Evite animar layout quando puder */
+/* height, width, top, left podem causar recalculações caras */</pre></div><p>Prefira animar <code>transform</code> e <code>opacity</code>. Remova CSS não usado e mantenha estilos críticos bem organizados.</p>`},
+      {title:"CSS moderno: container queries, layers e nesting",icon:"🚀",content:`<p>CSS moderno permite componentes mais independentes do tamanho da tela inteira. Com <code>@container</code>, o componente responde ao espaço que ele tem.</p><div class="code-block"><pre>.card-wrapper { container-type: inline-size; }
+
+@container (min-width: 520px) {
+  .card {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+  }
+}
+
+@layer reset, base, components, utilities;</pre></div><p><code>@layer</code> ajuda a controlar a ordem da cascata em projetos grandes.</p>`}
+    ]
+  };
+  const extraQuiz = {
+    aprendiz:[
+      {p:"Na arquitetura web, qual é a responsabilidade principal do CSS?",opts:["Criar banco de dados","Estilizar e apresentar o HTML","Executar regras de servidor","Substituir JavaScript"],c:1},
+      {p:"Qual unidade é baseada no tamanho de fonte da raiz do documento?",opts:["px","em","rem","vh"],c:2}
+    ],
+    iniciante:[
+      {p:"Flexbox é mais indicado quando o layout precisa organizar itens em:",opts:["Uma dimensão principal","Banco de dados","Apenas tabelas","Arquivos JSON"],c:0},
+      {p:"Qual função ajuda a criar colunas responsivas em Grid?",opts:["minmax()","alert()","querySelector()","parseInt()"],c:0}
+    ],
+    intermediario:[
+      {p:"Mobile-first normalmente começa o CSS pensando em:",opts:["Telas pequenas primeiro","TV 4K primeiro","Apenas desktop","Impressoras"],c:0},
+      {p:"Qual recurso melhora acessibilidade para usuários que navegam por teclado?",opts:["display:none em botões","focus-visible bem definido","Fonte de 8px","Remover outline sempre"],c:1}
+    ],
+    avancado:[
+      {p:"Para animações mais performáticas, geralmente é melhor animar:",opts:["width e height sempre","transform e opacity","margin-left em todos elementos","top em centenas de cards"],c:1},
+      {p:"Container queries permitem que o componente responda ao:",opts:["Tamanho do seu contêiner","Nome do arquivo HTML","Servidor DNS","Número de usuários logados"],c:0}
+    ]
+  };
+  Object.keys(extraTopics).forEach(k => {
+    if(CSS_LEVELS[k]) {
+      CSS_LEVELS[k].topics = [...CSS_LEVELS[k].topics, ...extraTopics[k]];
+      CSS_LEVELS[k].quiz = [...CSS_LEVELS[k].quiz, ...extraQuiz[k]];
+    }
+  });
+})();
+
 (function buildCssTab(){
   const div = document.createElement("div");
   div.className = "tab-content";
@@ -3708,173 +3966,80 @@ section:has(> h2 + p) { /* h2 filho direto seguido de p */ }
 
   const levelKeys = ["aprendiz","iniciante","intermediario","avancado"];
   let activeLvl = "aprendiz";
+  let cssMode = "aulas";
   let cssQuizState = {};
+
+  function cssUserKey(){ const u = window._currentUser; return u?.uid || u?.email || "visitante"; }
+  function progressKey(){ return "devscode_css_progress_" + cssUserKey(); }
+  function getProgress(){ try { return JSON.parse(localStorage.getItem(progressKey()) || "{}"); } catch(e){ return {}; } }
+  function saveProgress(data){ localStorage.setItem(progressKey(), JSON.stringify(data)); }
+  function markLessonsViewed(level){ const p=getProgress(); p[level]=p[level]||{}; p[level].lessonsViewed=true; p[level].viewedAt=new Date().toISOString(); saveProgress(p); }
+  function saveScore(level, score, total){ const p=getProgress(); p[level]=p[level]||{}; const grade=Number(((score/total)*10).toFixed(1)); p[level].bestGrade=Math.max(p[level].bestGrade||0, grade); p[level].approved=p[level].bestGrade>=7; p[level].lastScore=score; p[level].total=total; p[level].lastAttemptAt=new Date().toISOString(); saveProgress(p); return p[level]; }
+  function isUnlocked(level){ const idx=levelKeys.indexOf(level); if(idx<=0) return true; const prev=levelKeys[idx-1]; const p=getProgress(); return !!(p[prev]?.lessonsViewed && p[prev]?.approved); }
+  function nextLevel(level){ return levelKeys[levelKeys.indexOf(level)+1]; }
+  function levelStatus(level){ const p=getProgress()[level]||{}; if(!isUnlocked(level)) return "🔒 Bloqueado"; if(p.approved) return `✅ Aprovado — nota ${p.bestGrade}`; if(p.lessonsViewed) return "📚 Aulas vistas — faça a avaliação"; return "▶️ Liberado"; }
 
   function renderCssTab() {
     const lvl = CSS_LEVELS[activeLvl];
+    const progress = getProgress();
+    const currentProgress = progress[activeLvl] || {};
+    const locked = !isUnlocked(activeLvl);
+    const prevLevel = levelKeys[levelKeys.indexOf(activeLvl)-1];
     div.innerHTML = `
       <style>
-        .css-hero{background:linear-gradient(135deg,rgba(59,130,246,.07),rgba(139,92,246,.05));border:1px solid rgba(59,130,246,.18);border-radius:20px;padding:1.4rem 1.6rem;margin-bottom:1.4rem;position:relative;overflow:hidden}
-        .css-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,.12),transparent 70%);border-radius:50%}
-        .css-hero h2{font-size:1.4rem;font-weight:800;background:linear-gradient(90deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.3rem}
-        .css-level-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.4rem}
-        .css-lvl-btn{border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;padding:7px 16px;border-radius:40px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:5px}
-        .css-lvl-btn:hover{border-color:var(--blue);color:var(--text)}
-        .css-lvl-btn.active{color:white;border-color:transparent}
-        .css-topic-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.3rem;margin-bottom:1rem;transition:border-color .2s}
-        .css-topic-card:hover{border-color:rgba(59,130,246,.3)}
-        .css-topic-header{display:flex;align-items:center;gap:10px;margin-bottom:.9rem;cursor:pointer}
-        .css-topic-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-        .css-topic-title-txt{font-size:1rem;font-weight:700}
-        .css-topic-body{font-size:.85rem;line-height:1.8;color:var(--text-muted)}
-        .css-topic-body p{margin-bottom:.7rem;color:var(--text-muted)}
-        .css-topic-body strong{color:var(--text)}
-        .css-topic-body code{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#93c5fd;border-radius:5px;padding:1px 5px;font-family:'Space Mono',monospace;font-size:.78rem}
-        .css-topic-body ul{margin:.5rem 0}
-        .css-topic-body .code-block{margin:.8rem 0}
-        .css-topic-toggle{margin-left:auto;color:var(--text-muted);font-size:.75rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:3px 10px;cursor:pointer}
-        .css-quiz-area{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.4rem;margin-top:1.2rem}
-        .css-quiz-area h3{font-size:1rem;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
-        .css-hq-item{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.8rem}
-        .css-hq-text{font-size:.88rem;font-weight:600;margin-bottom:.6rem}
-        .css-hq-opts{display:flex;flex-wrap:wrap;gap:6px}
-        .css-hq-opt{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:40px;padding:5px 14px;font-size:.78rem;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;font-weight:600}
-        .css-hq-opt:hover{border-color:var(--blue);color:#93c5fd}
-        .css-hq-opt.selected{background:#1d4ed8;color:white;border-color:#3b82f6}
-        .css-hq-opt.correct{background:#16a34a;color:white;border-color:#22c55e}
-        .css-hq-opt.wrong{background:#b91c1c;color:white;border-color:#ef4444}
-        .css-hq-result{background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.2));border:1px solid #3b82f6;border-radius:14px;padding:1rem;text-align:center;margin-top:1rem;font-size:1rem;font-weight:700}
-        .css-progress-pills{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap}
-        .css-pill{width:28px;height:8px;border-radius:40px;background:var(--border);transition:.3s}
-        .css-pill.done{background:#3b82f6}
+        .css-hero{background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.06));border:1px solid rgba(59,130,246,.22);border-radius:20px;padding:1.4rem 1.6rem;margin-bottom:1.4rem;position:relative;overflow:hidden}.css-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:220px;height:220px;background:radial-gradient(circle,rgba(59,130,246,.15),transparent 70%);border-radius:50%}.css-hero h2{font-size:1.4rem;font-weight:800;background:linear-gradient(90deg,#3b82f6,#8b5cf6,#22c55e);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.3rem}.css-level-nav,.css-mode-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem}.css-lvl-btn,.css-mode-btn{border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;padding:7px 16px;border-radius:40px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px}.css-lvl-btn:hover,.css-mode-btn:hover{border-color:#3b82f6;color:var(--text)}.css-lvl-btn.active,.css-mode-btn.active{color:white;border-color:#3b82f6;background:rgba(59,130,246,.13)}.css-lvl-btn.locked{opacity:.55;filter:saturate(.5)}.css-dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;margin-bottom:1.1rem}.css-stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:.9rem}.css-stat b{display:block;font-size:1.1rem;color:#3b82f6;margin-bottom:.2rem}.css-stat span{font-size:.72rem;color:var(--text-muted)}.css-topic-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.3rem;margin-bottom:1rem;transition:border-color .2s}.css-topic-card:hover{border-color:rgba(59,130,246,.3)}.css-topic-header{display:flex;align-items:center;gap:10px;margin-bottom:.9rem;cursor:pointer}.css-topic-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.css-topic-title-txt{font-size:1rem;font-weight:700}.css-topic-body{font-size:.85rem;line-height:1.8;color:var(--text-muted)}.css-topic-body p{margin-bottom:.7rem;color:var(--text-muted)}.css-topic-body strong{color:var(--text)}.css-topic-body code{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#93c5fd;border-radius:5px;padding:1px 5px;font-family:'Space Mono',monospace;font-size:.78rem}.css-topic-toggle{margin-left:auto;color:var(--text-muted);font-size:.75rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:3px 10px}.css-quiz-area{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.4rem;margin-top:1.2rem}.css-quiz-area h3{font-size:1rem;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px}.css-hq-item{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.8rem}.css-hq-text{font-size:.88rem;font-weight:600;margin-bottom:.6rem}.css-hq-opts{display:flex;flex-wrap:wrap;gap:6px}.css-hq-opt{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:40px;padding:5px 14px;font-size:.78rem;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;font-weight:600}.css-hq-opt:hover{border-color:#3b82f6;color:#93c5fd}.css-hq-opt.selected{background:#1d4ed8;color:white;border-color:#3b82f6}.css-hq-opt.correct{background:#16a34a;color:white;border-color:#22c55e}.css-hq-opt.wrong{background:#b91c1c;color:white;border-color:#ef4444}.css-hq-result{background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.2));border:1px solid #3b82f6;border-radius:14px;padding:1rem;text-align:center;margin-top:1rem;font-size:1rem;font-weight:700}.css-progress-pills{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap}.css-pill{width:28px;height:8px;border-radius:40px;background:var(--border);transition:.3s}.css-pill.done{background:#3b82f6}.css-locked-panel{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(239,68,68,.08));border:1px solid rgba(251,191,36,.35);border-radius:18px;padding:1.3rem;color:#fde68a;line-height:1.7}.css-approved-panel{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.28);border-radius:16px;padding:1rem;color:#93c5fd;margin-bottom:1rem}
       </style>
 
       <div class="css-hero">
         <div style="font-size:.65rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#3b82f6;margin-bottom:.3rem"><i class="fab fa-css3-alt"></i> CSS — MATERIAL DIDÁTICO COMPLETO</div>
-        <h2>Do Treinee ao Staff Engineer</h2>
-        <p style="color:var(--text-muted);font-size:.85rem">Escolha seu nível abaixo. Cada módulo contém teoria profunda, exemplos reais de código e quiz para testar seu conhecimento.</p>
+        <h2>CSS - TRILHA DE CARREIRA</h2>
+        <p style="color:var(--text-muted);font-size:.85rem;line-height:1.7">Trilha em formato de faculdade: estude as aulas, depois vá em <strong>Realize a avaliação</strong>. Para liberar o próximo nível, é preciso ver as aulas e tirar pelo menos <strong>nota 7</strong>.</p>
+      </div>
+
+      <div class="css-dashboard">
+        <div class="css-stat"><b>${lvl.topics.length}</b><span>aulas neste nível</span></div>
+        <div class="css-stat"><b>${lvl.quiz.length}</b><span>questões na avaliação</span></div>
+        <div class="css-stat"><b>${currentProgress.bestGrade || "--"}</b><span>melhor nota</span></div>
+        <div class="css-stat"><b>${levelStatus(activeLvl)}</b><span>status do nível</span></div>
       </div>
 
       <div class="css-level-nav" id="cssLevelNav">
-        ${levelKeys.map(k=>{
-          const l = CSS_LEVELS[k];
-          const isActive = k===activeLvl;
-          return `<button class="css-lvl-btn${isActive?" active":""}" data-lvl="${k}" style="${isActive?`background:linear-gradient(135deg,${l.color}22,${l.color}11);border-color:${l.color};color:${l.color}`:''}">
-            ${l.label}
-          </button>`;
-        }).join("")}
+        ${levelKeys.map(k=>{ const l=CSS_LEVELS[k]; const isActive=k===activeLvl; const isLock=!isUnlocked(k); return `<button class="css-lvl-btn${isActive?" active":""}${isLock?" locked":""}" data-lvl="${k}" title="${levelStatus(k)}" style="${isActive?`background:linear-gradient(135deg,${l.color}22,${l.color}11);border-color:${l.color};color:${l.color}`:''}">${isLock?'🔒 ':''}${l.label}</button>`; }).join("")}
       </div>
 
-      <div style="background:${lvl.bg};border:1px solid ${lvl.border};border-radius:14px;padding:1rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--text-muted);line-height:1.7">
-        <strong style="color:${lvl.color}">${lvl.label}</strong> — ${lvl.desc}
+      <div class="css-mode-nav">
+        <button class="css-mode-btn ${cssMode==='aulas'?'active':''}" data-mode="aulas"><i class="fas fa-book-open"></i> Aulas do nível</button>
+        <button class="css-mode-btn ${cssMode==='avaliacao'?'active':''}" data-mode="avaliacao"><i class="fas fa-graduation-cap"></i> Realize a avaliação</button>
       </div>
 
-      <div id="cssTopicsArea">
-        ${lvl.topics.map((t,i)=>`
-          <div class="css-topic-card" id="css-topic-${i}">
-            <div class="css-topic-header" onclick="toggleCssTopic(${i})">
-              <div class="css-topic-icon" style="background:${lvl.bg};font-size:1.3rem">${t.icon}</div>
-              <div class="css-topic-title-txt">${t.title}</div>
-              <span class="css-topic-toggle" id="css-toggle-${i}">▼ Ver</span>
-            </div>
-            <div class="css-topic-body" id="cssTopicBody-${i}" style="display:none">${t.content}</div>
-          </div>
-        `).join("")}
-      </div>
-
-      <div class="css-quiz-area">
-        <h3><i class="fas fa-brain" style="color:#3b82f6"></i> Quiz — ${lvl.label} <span style="font-size:.72rem;color:var(--text-muted);font-weight:500">(${lvl.quiz.length} questões)</span></h3>
-        <div class="css-progress-pills" id="cssQuizPills">
-          ${lvl.quiz.map((_,i)=>`<div class="css-pill" id="css-pill-${i}"></div>`).join("")}
-        </div>
-        <div id="cssQuizBody">
-          ${lvl.quiz.map((q,qi)=>`
-            <div class="css-hq-item" id="cssHqItem-${qi}">
-              <div class="css-hq-text">${qi+1}. ${q.p}</div>
-              <div class="css-hq-opts">
-                ${q.opts.map((o,oi)=>`<button class="css-hq-opt" data-qi="${qi}" data-oi="${oi}" onclick="selectCssHqOpt(${qi},${oi})">${o}</button>`).join("")}
-              </div>
-              <div id="cssHqFeedback-${qi}" style="font-size:.78rem;margin-top:.4rem;display:none"></div>
-            </div>
-          `).join("")}
-        </div>
-        <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
-          <button class="btn btn-green" onclick="submitCssQuiz()"><i class="fas fa-check"></i> Corrigir Quiz</button>
-          <button class="btn btn-outline" onclick="resetCssQuiz()"><i class="fas fa-redo"></i> Tentar Novamente</button>
-        </div>
-        <div id="cssQuizResult" style="display:none"></div>
-      </div>
+      ${locked ? `<div class="css-locked-panel"><strong>🔒 Conteúdo bloqueado.</strong><br>Para acessar <b>${lvl.label}</b>, conclua o nível anterior (${CSS_LEVELS[prevLevel]?.label || 'anterior'}): veja as aulas e tire nota mínima 7 na avaliação.</div>` : `
+        <div style="background:${lvl.bg};border:1px solid ${lvl.border};border-radius:14px;padding:1rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--text-muted);line-height:1.7"><strong style="color:${lvl.color}">${lvl.label}</strong> — ${lvl.desc}</div>
+        ${cssMode==='aulas' ? `
+          <div class="css-approved-panel" style="display:${currentProgress.lessonsViewed?'block':'none'}">✅ Aulas deste nível marcadas como vistas. Agora faça a avaliação para liberar o próximo nível.</div>
+          <div id="cssTopicsArea">${lvl.topics.map((t,i)=>`<div class="css-topic-card" id="css-topic-${i}"><div class="css-topic-header" onclick="toggleCssTopic(${i})"><div class="css-topic-icon" style="background:${lvl.bg};font-size:1.3rem">${t.icon}</div><div class="css-topic-title-txt">${i+1}. ${t.title}</div><span class="css-topic-toggle" id="css-toggle-${i}">▼ Ver aula</span></div><div class="css-topic-body" id="cssTopicBody-${i}" style="display:none">${t.content}</div></div>`).join("")}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem"><button class="btn btn-blue" onclick="markCssLessonsAndGoQuiz()"><i class="fas fa-check-circle"></i> Marcar aulas como vistas e realizar avaliação</button></div>` : `
+          ${!currentProgress.lessonsViewed ? `<div class="css-locked-panel" style="margin-bottom:1rem">⚠️ Antes da avaliação, clique em <strong>Aulas do nível</strong>, estude o conteúdo e marque as aulas como vistas.</div>` : ``}
+          <div class="css-quiz-area"><h3><i class="fas fa-brain" style="color:#3b82f6"></i> Realize a avaliação — ${lvl.label} <span style="font-size:.72rem;color:var(--text-muted);font-weight:500">(${lvl.quiz.length} questões | nota mínima 7)</span></h3><div class="css-progress-pills" id="cssQuizPills">${lvl.quiz.map((_,i)=>`<div class="css-pill" id="css-pill-${i}"></div>`).join("")}</div><div id="cssQuizBody">${lvl.quiz.map((q,qi)=>`<div class="css-hq-item" id="cssHqItem-${qi}"><div class="css-hq-text">${qi+1}. ${q.p}</div><div class="css-hq-opts">${q.opts.map((o,oi)=>`<button class="css-hq-opt" data-qi="${qi}" data-oi="${oi}" onclick="selectCssHqOpt(${qi},${oi})">${o}</button>`).join("")}</div><div id="cssHqFeedback-${qi}" style="font-size:.78rem;margin-top:.4rem;display:none"></div></div>`).join("")}</div><div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap"><button class="btn btn-blue" onclick="submitCssQuiz()" ${!currentProgress.lessonsViewed?'disabled style="opacity:.5;cursor:not-allowed"':''}><i class="fas fa-check"></i> Corrigir avaliação</button><button class="btn btn-outline" onclick="resetCssQuiz()"><i class="fas fa-redo"></i> Tentar novamente</button></div><div id="cssQuizResult" style="display:none"></div></div>`}
+      `}
     `;
 
-    div.querySelectorAll(".css-lvl-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        activeLvl = btn.dataset.lvl;
-        cssQuizState = {};
-        renderCssTab();
-      });
-    });
+    div.querySelectorAll(".css-lvl-btn").forEach(btn => btn.addEventListener("click", () => { activeLvl = btn.dataset.lvl; cssMode = "aulas"; cssQuizState = {}; renderCssTab(); }));
+    div.querySelectorAll(".css-mode-btn").forEach(btn => btn.addEventListener("click", () => { cssMode = btn.dataset.mode; cssQuizState = {}; renderCssTab(); }));
   }
 
-  window.toggleCssTopic = function(i) {
-    const body = div.querySelector(`#cssTopicBody-${i}`);
-    const tog  = div.querySelector(`#css-toggle-${i}`);
-    if(!body) return;
-    const open = body.style.display !== "none";
-    body.style.display = open ? "none" : "block";
-    tog.textContent = open ? "▼ Ver" : "▲ Fechar";
+  window.toggleCssTopic = function(i){ const body=div.querySelector(`#cssTopicBody-${i}`); const tog=div.querySelector(`#css-toggle-${i}`); if(!body) return; const open=body.style.display!=="none"; body.style.display=open?"none":"block"; if(tog) tog.textContent=open?"▼ Ver aula":"▲ Fechar aula"; };
+  window.markCssLessonsAndGoQuiz = function(){ markLessonsViewed(activeLvl); cssMode="avaliacao"; cssQuizState={}; renderCssTab(); };
+  window.selectCssHqOpt = function(qi, oi){ if(cssQuizState[qi]?.answered) return; cssQuizState[qi]={selected:oi}; div.querySelectorAll(`.css-hq-opt[data-qi="${qi}"]`).forEach(b=>b.classList.remove("selected")); div.querySelector(`.css-hq-opt[data-qi="${qi}"][data-oi="${oi}"]`)?.classList.add("selected"); };
+  window.submitCssQuiz = function(){
+    const currentProgress = getProgress()[activeLvl] || {};
+    if(!currentProgress.lessonsViewed){ alert("Você precisa marcar as aulas como vistas antes de realizar a avaliação."); return; }
+    const lvl=CSS_LEVELS[activeLvl]; let score=0;
+    lvl.quiz.forEach((q,qi)=>{ const sel=cssQuizState[qi]?.selected; const opts=div.querySelectorAll(`.css-hq-opt[data-qi="${qi}"]`); opts.forEach(b=>b.classList.remove("selected","correct","wrong")); const fb=div.querySelector(`#cssHqFeedback-${qi}`); if(sel===undefined){ if(fb){ fb.textContent="⚠️ Questão não respondida"; fb.style.display="block"; fb.style.color="#fbbf24"; } return; } if(sel===q.c){ score++; opts[sel]?.classList.add("correct"); div.querySelector(`#css-pill-${qi}`)?.classList.add("done"); } else { opts[sel]?.classList.add("wrong"); opts[q.c]?.classList.add("correct"); } cssQuizState[qi].answered=true; if(fb){ fb.style.display="block"; fb.textContent=sel===q.c?"✅ Correto!":`❌ Resposta correta: ${q.opts[q.c]}`; fb.style.color=sel===q.c?"var(--green)":"#f87171"; } });
+    const total=lvl.quiz.length; const grade=Number(((score/total)*10).toFixed(1)); const saved=saveScore(activeLvl, score, total); const passed=grade>=7; const nxt=nextLevel(activeLvl); const res=div.querySelector("#cssQuizResult"); res.style.display="block"; res.innerHTML=`<div class="css-hq-result">${passed?'🎓':'📚'} Você acertou <strong>${score}/${total}</strong> — nota <strong>${grade}</strong><br><span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">${passed ? (nxt ? `Aprovado! O próximo nível foi liberado: ${CSS_LEVELS[nxt].label}.` : 'Aprovado! Você concluiu a trilha de CSS.') : 'Nota mínima 7 não alcançada. Revise as aulas e tente novamente.'} Melhor nota salva: ${saved.bestGrade}</span></div>`; res.scrollIntoView({behavior:"smooth",block:"nearest"});
   };
+  window.resetCssQuiz = function(){ cssQuizState={}; renderCssTab(); };
 
-  window.selectCssHqOpt = function(qi, oi) {
-    if(cssQuizState[qi]?.answered) return;
-    cssQuizState[qi] = { selected: oi };
-    div.querySelectorAll(`.css-hq-opt[data-qi="${qi}"]`).forEach(b => b.classList.remove("selected"));
-    div.querySelector(`.css-hq-opt[data-qi="${qi}"][data-oi="${oi}"]`)?.classList.add("selected");
-  };
-
-  window.submitCssQuiz = function() {
-    const lvl = CSS_LEVELS[activeLvl];
-    let score = 0;
-    lvl.quiz.forEach((q, qi) => {
-      const st = cssQuizState[qi];
-      const sel = st?.selected;
-      const opts = div.querySelectorAll(`.css-hq-opt[data-qi="${qi}"]`);
-      opts.forEach(b => { b.classList.remove("selected","correct","wrong"); });
-      if(sel === undefined) {
-        const fb = div.querySelector(`#cssHqFeedback-${qi}`);
-        if(fb){ fb.textContent="⚠️ Questão não respondida"; fb.style.display="block"; fb.style.color="#fbbf24"; }
-        return;
-      }
-      if(sel === q.c) {
-        score++;
-        opts[sel].classList.add("correct");
-        const pill = div.querySelector(`#css-pill-${qi}`);
-        if(pill) pill.classList.add("done");
-      } else {
-        opts[sel].classList.add("wrong");
-        opts[q.c].classList.add("correct");
-      }
-      cssQuizState[qi].answered = true;
-      const fb = div.querySelector(`#cssHqFeedback-${qi}`);
-      if(fb) {
-        fb.style.display="block";
-        fb.textContent = sel===q.c ? "✅ Correto!" : `❌ Resposta correta: ${q.opts[q.c]}`;
-        fb.style.color = sel===q.c ? "var(--green)" : "#f87171";
-      }
-    });
-    const total = lvl.quiz.length;
-    const pct = Math.round((score/total)*100);
-    const emoji = pct===100?"🏆":pct>=70?"🎉":pct>=50?"💪":"📚";
-    const res = div.querySelector("#cssQuizResult");
-    res.style.display = "block";
-    res.innerHTML = `<div class="css-hq-result">${emoji} Você acertou <strong>${score}/${total}</strong> — ${pct}%<br><span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">${pct===100?"Perfeito! Você domina este nível.":pct>=70?"Ótimo resultado! Revise os erros.":pct>=50?"Bom começo! Releia os tópicos.":"Não desanime — estude os tópicos e tente novamente!"}</span></div>`;
-    res.scrollIntoView({behavior:"smooth",block:"nearest"});
-  };
-
-  window.resetCssQuiz = function() {
-    cssQuizState = {};
-    renderCssTab();
-  };
-
+  window.addEventListener('auth-state-ready', () => renderCssTab());
   renderCssTab();
   main.appendChild(div);
 })();
@@ -8205,5 +8370,357 @@ function escHtml(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"
   window.hideSiteIntro = hideIntro;
 })();
 </script>
+
+
+<script>
+/* ============================================================
+   ACADEMY OVERRIDE — JavaScript, Java, Python, PHP, Pandas, IA & ML
+   Mesmo formato da trilha HTML/CSS: aulas por nível, avaliação separada,
+   bloqueio por login e progressão com nota mínima 7.
+============================================================ */
+(function(){
+  const LEVEL_ORDER = ["iniciante","intermediario","avancado","profissional"];
+  const ACADEMY_LANGS = {
+    "js-levels": {
+      title:"JavaScript", icon:"fab fa-js", accent:"#fbbf24", btn:"btn-outline",
+      levels:{
+        iniciante:{label:"🟢 Iniciante", desc:"Base de programação web: sintaxe, variáveis, tipos, funções, DOM e eventos.", topics:[
+          ["📜","História e papel do JavaScript",`<p><strong>JavaScript</strong> nasceu em 1995 para dar comportamento às páginas web. Hoje é uma linguagem completa usada no navegador, no backend com Node.js, em aplicativos mobile, desktop, automações e ferramentas modernas.</p><p>No frontend, ele conecta HTML e CSS com interação real: botões, menus, validação de formulários, requisições, animações e interfaces dinâmicas.</p>`],
+          ["🧠","Sintaxe, variáveis e tipos",`<p>Use <code>const</code> para valores que não terão a referência trocada e <code>let</code> para valores que mudam. Evite <code>var</code> em projetos modernos.</p><div class="code-block"><pre>const nome = "Ana";
+let pontos = 0;
+const ativo = true;
+const tecnologias = ["HTML", "CSS", "JS"];
+const aluno = { nome, pontos, ativo };</pre></div><p>Tipos essenciais: string, number, boolean, null, undefined, object, array, function, symbol e bigint.</p>`],
+          ["🔁","Condicionais e laços",`<p>Condicionais controlam decisões. Laços repetem tarefas. Dominar <code>if</code>, <code>else</code>, <code>for</code>, <code>while</code>, <code>for...of</code> e métodos de array é indispensável.</p><div class="code-block"><pre>const notas = [8, 6, 10];
+for (const nota of notas) {
+  console.log(nota >= 7 ? "aprovado" : "revisar");
+}</pre></div>`],
+          ["🧩","Funções",`<p>Funções organizam a lógica em blocos reutilizáveis. Elas podem receber parâmetros, retornar valores e ser guardadas em variáveis.</p><div class="code-block"><pre>function calcularMedia(a, b) {
+  return (a + b) / 2;
+}
+const dobro = n => n * 2;</pre></div><p>Aprenda escopo, retorno, parâmetros padrão e arrow functions.</p>`],
+          ["🌐","DOM e eventos",`<p>O DOM representa o HTML como objetos manipuláveis pelo JavaScript. Com ele, você seleciona elementos, altera textos, adiciona classes e responde a eventos.</p><div class="code-block"><pre>const btn = document.querySelector("#entrar");
+btn.addEventListener("click", () => {
+  document.body.classList.toggle("ativo");
+});</pre></div>`],
+          ["🧪","Boas práticas iniciais",`<p>Nomeie variáveis com clareza, separe responsabilidades, evite código duplicado, use <code>strict equality</code> (<code>===</code>) e teste cada parte aos poucos.</p>`]
+        ], quiz:[
+          ["Qual comando moderno declara uma constante?",["var","let","const","static"],2],
+          ["O que o DOM permite fazer?",["Criar banco de dados","Manipular a página HTML","Compilar Java","Hospedar servidor"],1],
+          ["Qual operador compara valor e tipo?",["=","==","===","!"],2],
+          ["Para que serve uma função?",["Reutilizar lógica","Apagar CSS","Criar domínio","Instalar navegador"],0],
+          ["Qual evento ocorre ao clicar?",["submit","change","click","loadcss"],2],
+          ["Qual estrutura percorre arrays facilmente?",["for...of","switch","try","class"],0],
+          ["Qual tipo representa verdadeiro/falso?",["string","number","boolean","object"],2],
+          ["Qual método seleciona um elemento?",["document.querySelector","window.style","html.get","css.pick"],0],
+          ["Boa prática em JS moderno é evitar:",["const","let","var","functions"],2],
+          ["Arrow function é uma forma de escrever:",["CSS","Função","HTML","Banco"],1]
+        ]},
+        intermediario:{label:"🟡 Intermediário", desc:"Arrays, objetos, módulos, assincronismo, fetch, formulários e arquitetura de interface.", topics:[
+          ["📦","Arrays e objetos na prática",`<p>Arrays organizam listas; objetos modelam entidades. Métodos como <code>map</code>, <code>filter</code>, <code>reduce</code>, <code>find</code> e <code>some</code> tornam o código mais expressivo.</p><div class="code-block"><pre>const aprovados = alunos
+  .filter(a => a.nota >= 7)
+  .map(a => ({ ...a, status: "aprovado" }));</pre></div>`],
+          ["⏳","Assincronismo",`<p>JavaScript é muito usado para buscar dados sem travar a interface. Aprenda promises, <code>async/await</code>, tratamento de erro e estados de carregamento.</p><div class="code-block"><pre>async function carregarUsuarios(){
+  try {
+    const res = await fetch("/api/users");
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+  }
+}</pre></div>`],
+          ["🧱","Módulos",`<p>Módulos separam arquivos e responsabilidades. Use <code>export</code> e <code>import</code> para organizar componentes, serviços e utilidades.</p>`],
+          ["📝","Formulários e validação",`<p>Valide campos no frontend para melhorar experiência do usuário, mas nunca confie apenas no cliente. A validação final precisa existir no backend.</p>`],
+          ["🛠️","Debug e DevTools",`<p>Use console, breakpoints, network, performance e application storage para depurar problemas reais.</p>`],
+          ["⚙️","Organização de projetos",`<p>Separe camada de UI, dados, serviços, estado e utilidades. Isso evita arquivos gigantes e facilita manutenção.</p>`]
+        ], quiz:[["Qual método transforma cada item de um array?",["map","filter","push","find"],0],["async/await trabalha com:",["Promises","CSS","HTML semântico","SQL puro"],0],["fetch é usado para:",["Fazer requisições HTTP","Criar fontes","Desenhar SVG","Compilar Java"],0],["Qual método filtra itens?",["reduce","filter","slice","join"],1],["Módulos usam:",["import/export","open/close","get/set CSS","echo"],0],["Validação frontend substitui backend?",["Sim","Não","Sempre","Só em mobile"],1],["DevTools Network ajuda a ver:",["Requisições","Cores do monitor","Senha do usuário","Drivers"],0],["Spread operator em objeto é:",["...obj","***obj","obj++","spread(obj)"],0],["try/catch serve para:",["Tratar erros","Criar HTML","Alterar DNS","Remover CSS"],0],["find retorna:",["Todos os itens","Primeiro item que atende condição","A soma","Um CSS"],1]]},
+        avancado:{label:"🟠 Avançado", desc:"Classes, closures, event loop, performance, padrões, testes, segurança e APIs robustas.", topics:[
+          ["🧬","Closures e escopo",`<p>Closure ocorre quando uma função lembra variáveis do escopo onde foi criada. É base para encapsulamento, factories e callbacks.</p><div class="code-block"><pre>function contador(){
+  let valor = 0;
+  return () => ++valor;
+}</pre></div>`],
+          ["🔄","Event loop",`<p>Entenda call stack, microtasks, macrotasks e renderização. Isso explica por que promises executam antes de <code>setTimeout</code>.</p>`],
+          ["🏗️","Classes, protótipos e padrões",`<p>JavaScript usa protótipos. Classes são uma sintaxe moderna sobre esse modelo. Domine composição, herança com cautela e padrões como Observer, Factory e Module.</p>`],
+          ["🧪","Testes",`<p>Teste funções puras, componentes e fluxos. Ferramentas comuns incluem Jest, Vitest, Testing Library e Playwright.</p>`],
+          ["🚀","Performance",`<p>Evite manipulações excessivas no DOM, faça debounce/throttle, divida bundles, use lazy loading e monitore Core Web Vitals.</p>`],
+          ["🔐","Segurança",`<p>Cuide de XSS, CSRF, armazenamento indevido de tokens, validação de entradas e sanitização de HTML.</p>`]
+        ], quiz:[["Closure lembra:",["Variáveis do escopo externo","Somente CSS","Banco SQL","Arquivo HTML"],0],["Microtasks incluem:",["Promises","setTimeout sempre","CSS parser","Imagens"],0],["Classes em JS são sobre:",["Protótipos","PHP","Java bytecode","SQL"],0],["Debounce ajuda em:",["Eventos repetidos como digitação","Senha forte","Semântica HTML","SEO"],0],["XSS envolve:",["Injeção de script","Erro de fonte","Layout flex","Cache de imagem"],0],["Teste end-to-end simula:",["Fluxo real do usuário","Só variáveis","A cor da página","DNS"],0],["Lazy loading melhora:",["Carregamento inicial","Sintaxe","Senhas","Domínio"],0],["Observer é um padrão para:",["Notificar mudanças","Criar CSS","Compilar C","Apagar DOM"],0],["localStorage é adequado para senhas?",["Sim","Não","Sempre","Só em HTTPS"],1],["Core Web Vitals medem:",["Experiência/performance","Banco de dados","Tipagem Java","Licença"],0]]},
+        profissional:{label:"🔴 Profissional", desc:"Arquitetura frontend/backend, TypeScript, Node.js, escalabilidade, observabilidade e carreira técnica.", topics:[
+          ["🏛️","Arquitetura de aplicações",`<p>Aplicações profissionais exigem separação de camadas, padronização de componentes, gerenciamento de estado, contratos de API e estratégia de testes.</p>`],
+          ["🟦","TypeScript",`<p>TypeScript adiciona tipagem estática, melhora refatoração e reduz bugs em projetos grandes.</p><div class="code-block"><pre>type User = { id: string; name: string; role: "admin" | "student" };</pre></div>`],
+          ["🟩","Node.js e APIs",`<p>No backend, JS com Node.js cria APIs REST, GraphQL, workers, CLIs e serviços em tempo real.</p>`],
+          ["📈","Escalabilidade",`<p>Cache, filas, paginação, rate limit, CDN, logs e monitoramento são fundamentais para sistemas reais.</p>`],
+          ["👥","Qualidade em equipe",`<p>Use lint, formatter, code review, documentação, padrões de commit e CI/CD.</p>`],
+          ["🧭","Carreira",`<p>Um dev JavaScript forte domina fundamentos, arquitetura, comunicação, produto, segurança e performance — não apenas frameworks.</p>`]
+        ], quiz:[["TypeScript adiciona:",["Tipagem estática","CSS automático","Banco próprio","Servidor físico"],0],["CI/CD automatiza:",["Testes/deploy","Cores","HTML tags","Memória RAM"],0],["Rate limit protege contra:",["Abuso de requisições","Erro de fonte","Margin collapse","Import CSS"],0],["Paginação evita:",["Carregar dados demais","Usar funções","Login","HTTPS"],0],["Logs e métricas fazem parte de:",["Observabilidade","Semântica","Tipografia","Array"],0],["GraphQL é:",["Modelo de API","Framework CSS","Banco local","Editor"],0],["Code review melhora:",["Qualidade e aprendizado","Apenas cor","DNS","Hardware"],0],["Cache reduz:",["Trabalho repetido/latência","Segurança","Acessibilidade","Tipagem"],0],["Uma boa arquitetura busca:",["Manutenção e clareza","Arquivos gigantes","Duplicação","Segredos no frontend"],0],["Tokens devem ser tratados com:",["Segurança","Aleatoriedade no CSS","console.log sempre","localStorage obrigatório"],0]]}
+      }
+    },
+    java: {title:"Java", icon:"fab fa-java", accent:"#ef4444", btn:"btn-outline", levels:{}},
+    python: {title:"Python", icon:"fab fa-python", accent:"#22c55e", btn:"btn-green", levels:{}},
+    php: {title:"PHP", icon:"fab fa-php", accent:"#8b5cf6", btn:"btn-purple", levels:{}},
+    pandas: {title:"Pandas", icon:"fas fa-chart-bar", accent:"#38bdf8", btn:"btn-blue", levels:{}},
+    ia: {title:"IA & ML", icon:"fas fa-robot", accent:"#a78bfa", btn:"btn-purple", levels:{}}
+  };
+
+  function fillGeneric(){
+    ACADEMY_LANGS.java.levels = makeLevels("Java", "Criação de sistemas robustos com orientação a objetos, tipagem forte, JVM, Spring, APIs e arquitetura corporativa.", ["JVM","POO","Spring Boot","Microsserviços"]);
+    ACADEMY_LANGS.python.levels = makeLevels("Python", "Linguagem versátil para automação, backend, dados, IA, scripts, APIs e produtividade profissional.", ["Sintaxe limpa","POO","FastAPI","Dados e IA"]);
+    ACADEMY_LANGS.php.levels = makeLevels("PHP", "Backend web, formulários, sessões, banco de dados, segurança, APIs, Laravel e sistemas dinâmicos.", ["Web backend","PDO","Laravel","Segurança"]);
+    ACADEMY_LANGS.pandas.levels = makeLevels("Pandas", "Análise de dados com DataFrames, limpeza, agrupamentos, datas, joins, visualização e preparação para ML.", ["DataFrame","Limpeza","GroupBy","ETL"]);
+    ACADEMY_LANGS.ia.levels = makeLevels("IA & ML", "Fundamentos de inteligência artificial, machine learning, dados, modelos, avaliação, redes neurais, LLMs e ética.", ["Dados","Modelos","Métricas","LLMs"]);
+  }
+
+  function makeLevels(name, desc, tags){
+    const lower = name.toLowerCase();
+    return {
+      iniciante:{label:"🟢 Iniciante", desc:`Primeiros fundamentos de ${name}: conceitos, vocabulário, instalação mental e prática guiada.`, topics:[
+        ["📜",`História, mercado e onde ${name} é usado`, `<p><strong>${name}</strong> é estudado em trilhas profissionais porque resolve problemas reais no mercado. Nesta aula você entende origem, principais usos, áreas de atuação e como a tecnologia aparece em projetos de empresas.</p><p><strong>Aplicações:</strong> ${desc}</p><div class="fact-tags">${tags.map(t=>`<span class="fact-tag">${t}</span>`).join("")}</div>`],
+        ["🧱","Conceitos básicos", `<p>Aprenda os termos essenciais antes de avançar: estrutura do projeto, arquivos, sintaxe, entradas, saídas, erros, documentação e organização.</p><p>O objetivo é construir base sólida para não apenas copiar códigos, mas entender o motivo de cada parte existir.</p>`],
+        ["⌨️","Primeiro exemplo prático", `<div class="code-block"><pre>${sampleCode(name,"basic")}</pre></div><p>Analise linha por linha: declaração, execução, resultado esperado e possíveis erros comuns de iniciante.</p>`],
+        ["🧠","Lógica e resolução de problemas", `<p>Antes de decorar comandos, treine decomposição: entrada → processamento → saída. Todo sistema pode ser dividido em passos menores.</p>`],
+        ["🧪","Erros comuns", `<p>Erros fazem parte do aprendizado. Aprenda a ler mensagens, pesquisar documentação, isolar o problema e criar exemplos mínimos reproduzíveis.</p>`],
+        ["📚","Mini projeto do nível", `<p>Construa um pequeno projeto guiado usando ${name}: cadastro simples, análise ou simulação. O foco é praticar organização, clareza e revisão.</p>`]
+      ], quiz: genericQuiz(name,"iniciante")},
+      intermediario:{label:"🟡 Intermediário", desc:`Uso prático de ${name} em projetos maiores, organização, dados, módulos, dependências e boas práticas.`, topics:[
+        ["🧩","Estruturas e organização", `<p>Projetos intermediários exigem separação por responsabilidades: módulos, funções, classes, serviços, configuração e documentação.</p>`],
+        ["📦","Dependências e ecossistema", `<p>Aprenda a usar bibliotecas sem virar dependente delas. Entenda versionamento, documentação, instalação, atualização e riscos.</p>`],
+        ["🗃️","Dados e persistência", `<p>Grande parte dos sistemas trabalha com dados: leitura, validação, transformação, banco, arquivos, APIs ou datasets.</p><div class="code-block"><pre>${sampleCode(name,"data")}</pre></div>`],
+        ["🔐","Validação e segurança", `<p>Valide entradas, trate exceções, evite exposição de segredos e pense no que pode dar errado antes de publicar.</p>`],
+        ["🧪","Testes e revisão", `<p>Teste unidades pequenas, cenários de erro e fluxos principais. Código confiável é código verificável.</p>`],
+        ["🚀","Projeto intermediário", `<p>Crie uma aplicação com entrada, processamento, persistência ou relatório. Documente como executar e como testar.</p>`]
+      ], quiz: genericQuiz(name,"intermediario")},
+      avancado:{label:"🟠 Avançado", desc:`Arquitetura, performance, padrões, automação, integração e decisões técnicas com ${name}.`, topics:[
+        ["🏗️","Arquitetura", `<p>Arquitetura define como o projeto cresce sem virar bagunça. Pense em camadas, contratos, acoplamento, coesão e manutenção.</p>`],
+        ["⚡","Performance", `<p>Meça antes de otimizar. Identifique gargalos, evite processamento desnecessário e escolha estruturas adequadas.</p>`],
+        ["🔌","Integrações", `<p>Sistemas reais conversam com APIs, filas, bancos, arquivos, serviços externos e autenticação.</p>`],
+        ["🧯","Tratamento de falhas", `<p>Crie logs, mensagens úteis, fallback, validação e monitoramento. Erros silenciosos são perigosos.</p>`],
+        ["🧰","Ferramentas profissionais", `<p>Use lint, formatter, testes automatizados, ambiente separado, versionamento e revisão de código.</p>`],
+        ["📊","Projeto avançado", `<p>Construa um projeto com arquitetura clara, testes, documentação e preocupação com segurança e performance.</p>`]
+      ], quiz: genericQuiz(name,"avancado")},
+      profissional:{label:"🔴 Profissional", desc:`Padrão de mercado com ${name}: escalabilidade, deploy, observabilidade, liderança técnica e portfólio.`, topics:[
+        ["🏢","Ambiente corporativo", `<p>Profissionais precisam pensar além do código: produto, usuário, custo, prazo, manutenção, documentação e colaboração.</p>`],
+        ["📈","Escala e confiabilidade", `<p>Escala envolve cache, filas, banco bem modelado, monitoramento, deploy seguro e resposta a incidentes.</p>`],
+        ["🔍","Observabilidade", `<p>Logs, métricas e rastreamento ajudam a entender o sistema em produção. Sem observabilidade, a equipe trabalha no escuro.</p>`],
+        ["🛡️","Segurança profissional", `<p>Proteja credenciais, valide permissões, revise dependências, aplique princípio do menor privilégio e registre auditorias.</p>`],
+        ["👥","Trabalho em equipe", `<p>Code review, comunicação clara, documentação e decisões registradas fazem diferença em times reais.</p>`],
+        ["🎓","Portfólio final", `<p>Finalize um projeto completo em ${name}, com README, testes, exemplos, prints, explicação técnica e próximos passos.</p>`]
+      ], quiz: genericQuiz(name,"profissional")}
+    };
+  }
+
+  function sampleCode(name,type){
+    if(name==="Java") return type==="basic" ? `public class Main {
+  public static void main(String[] args) {
+    String aluno = "Ana";
+    int nota = 8;
+    System.out.println(aluno + " foi aprovado? " + (nota >= 7));
+  }
+}` : `class Aluno {
+  String nome;
+  double nota;
+  boolean aprovado(){ return nota >= 7; }
+}`;
+    if(name==="Python") return type==="basic" ? `nome = "Ana"
+nota = 8
+print(f"{nome} aprovado? {nota >= 7}")` : `alunos = [{"nome":"Ana","nota":8}, {"nome":"Bia","nota":6}]
+aprovados = [a for a in alunos if a["nota"] >= 7]
+print(aprovados)`;
+    if(name==="PHP") return type==="basic" ? `<?php
+$nome = "Ana";
+$nota = 8;
+echo $nota >= 7 ? "$nome aprovada" : "$nome em revisão";
+?>` : `<?php
+$pdo = new PDO($dsn, $user, $pass);
+$stmt = $pdo->prepare("SELECT * FROM alunos WHERE nota >= ?");
+$stmt->execute([7]);
+?>`;
+    if(name==="Pandas") return type==="basic" ? `import pandas as pd
+
+df = pd.DataFrame({"nome":["Ana","Bia"], "nota":[8,6]})
+print(df[df["nota"] >= 7])` : `media = df.groupby("turma")["nota"].mean()
+limpo = df.dropna().drop_duplicates()`;
+    return type==="basic" ? `# Exemplo conceitual de ML
+dados -> treino -> modelo -> avaliação -> uso responsável` : `from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+# separar dados, treinar modelo e avaliar métricas`;
+  }
+
+  function genericQuiz(name, level){
+    const q = [
+      [`Em ${name}, o primeiro passo para aprender bem é:`,["Decorar sem entender","Entender fundamentos e praticar","Ignorar erros","Pular documentação"],1],
+      ["Qual atitude reduz bugs?",["Testar e revisar","Copiar qualquer código","Não ler mensagens de erro","Guardar senha no código"],0],
+      ["O que é boa prática em projetos?",["Organização e nomes claros","Tudo em um único bloco","Sem comentários úteis","Sem versionamento"],0],
+      ["Por que documentação importa?",["Ajuda manutenção e aprendizado","Só enfeita","Substitui testes","Remove segurança"],0],
+      ["Qual cuidado é essencial com dados do usuário?",["Validação e segurança","Exposição pública","Console log de senha","Ignorar permissões"],0],
+      ["O que fazer ao encontrar erro?",["Ler a mensagem e isolar o problema","Apagar tudo","Culpar a linguagem","Publicar assim"],0],
+      ["Em nível profissional, código precisa ser:",["Manutenível e confiável","Apenas rápido de digitar","Sem padrão","Secreto para a equipe"],0],
+      ["Testes servem para:",["Verificar comportamento","Mudar a cor do editor","Hospedar o site","Criar senha"],0],
+      ["Performance deve ser guiada por:",["Medição","Achismo","Moda","Comentários"],0],
+      ["Para liberar o próximo nível nesta trilha é preciso:",["Nota mínima 7 e aulas vistas","Só clicar","Trocar tema","Enviar chat"],0]
+    ];
+    if(level==="intermediario") q[0]=[`No nível intermediário de ${name}, o foco é:`,["Projetos organizados","Apenas teoria","Ignorar dependências","Remover validação"],0];
+    if(level==="avancado") q[0]=[`No nível avançado de ${name}, arquitetura significa:`,["Organizar decisões para o sistema crescer","Criar arquivos aleatórios","Usar qualquer biblioteca","Evitar testes"],0];
+    if(level==="profissional") q[0]=[`No nível profissional de ${name}, além de código importa:`,["Produto, equipe, segurança e manutenção","Somente sintaxe","Apenas aparência","Nada além do editor"],0];
+    return q;
+  }
+
+  function currentUserId(){
+    const u = window._currentUser || window.currentUser || window.authUser || null;
+    const email = (u && (u.email || u.uid)) || localStorage.getItem("devsCodeLabCurrentUser") || "visitante";
+    return String(email).replace(/[^a-zA-Z0-9@._-]/g,"_");
+  }
+  function key(lang){ return `academyProgress_${lang}_${currentUserId()}`; }
+  function getP(lang){ try{return JSON.parse(localStorage.getItem(key(lang))||"{}");}catch(e){return{};} }
+  function setP(lang,p){ localStorage.setItem(key(lang),JSON.stringify(p)); }
+  function unlocked(lang,lvl){ const i=LEVEL_ORDER.indexOf(lvl); if(i<=0) return true; const p=getP(lang); const prev=LEVEL_ORDER[i-1]; return !!(p[prev] && p[prev].lessonsViewed && p[prev].approved); }
+  function status(lang,lvl){ const p=getP(lang)[lvl]||{}; if(!unlocked(lang,lvl)) return "🔒 Bloqueado"; if(p.approved) return `✅ Aprovado — nota ${p.bestGrade}`; if(p.lessonsViewed) return "📚 Aulas vistas — faça a avaliação"; return "▶️ Liberado"; }
+
+  const state = {};
+  function render(langId){
+    const cfg=ACADEMY_LANGS[langId]; const el=document.getElementById("tab-"+langId) || document.getElementById(langId); if(!cfg || !el) return; el.classList.add(`academy-root-${langId}`);
+    state[langId]=state[langId]||{level:"iniciante", mode:"aulas", answers:{}};
+    const st=state[langId], lvl=cfg.levels[st.level], p=getP(langId), cp=p[st.level]||{}, locked=!unlocked(langId,st.level), prev=LEVEL_ORDER[LEVEL_ORDER.indexOf(st.level)-1];
+    el.innerHTML = `
+      <style>
+        .academy-root-${langId} .academy-hero{background:linear-gradient(135deg,${hexA(cfg.accent,.11)},rgba(59,130,246,.05));border:1px solid ${hexA(cfg.accent,.25)};border-radius:20px;padding:1.4rem 1.6rem;margin-bottom:1.4rem;position:relative;overflow:hidden}
+        .academy-root-${langId} .academy-hero h2{font-size:1.4rem;font-weight:800;background:linear-gradient(90deg,${cfg.accent},#3b82f6);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.3rem}
+        .academy-root-${langId} .academy-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem} .academy-root-${langId} .academy-btn{border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;padding:7px 16px;border-radius:40px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px} .academy-root-${langId} .academy-btn:hover{border-color:${cfg.accent};color:var(--text)} .academy-root-${langId} .academy-btn.active{color:white;border-color:${cfg.accent};background:${hexA(cfg.accent,.14)}} .academy-root-${langId} .academy-btn.locked{opacity:.55;filter:saturate(.5)}
+        .academy-root-${langId} .academy-dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;margin-bottom:1.1rem} .academy-root-${langId} .academy-stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:.9rem} .academy-root-${langId} .academy-stat b{display:block;font-size:1.1rem;color:${cfg.accent};margin-bottom:.2rem} .academy-root-${langId} .academy-stat span{font-size:.72rem;color:var(--text-muted)}
+        .academy-root-${langId} .topic-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.3rem;margin-bottom:1rem;transition:border-color .2s} .academy-root-${langId} .topic-card:hover{border-color:${hexA(cfg.accent,.45)}} .academy-root-${langId} .topic-header{display:flex;align-items:center;gap:10px;margin-bottom:.9rem;cursor:pointer} .academy-root-${langId} .topic-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;background:${hexA(cfg.accent,.12)}} .academy-root-${langId} .topic-title-txt{font-size:1rem;font-weight:700} .academy-root-${langId} .topic-body{font-size:.85rem;line-height:1.8;color:var(--text-muted)} .academy-root-${langId} .topic-body p{margin-bottom:.7rem} .academy-root-${langId} .topic-body strong{color:var(--text)} .academy-root-${langId} .topic-body code{background:${hexA(cfg.accent,.12)};border:1px solid ${hexA(cfg.accent,.25)};color:${cfg.accent};border-radius:5px;padding:1px 5px;font-family:'Space Mono',monospace;font-size:.78rem} .academy-root-${langId} .topic-toggle{margin-left:auto;color:var(--text-muted);font-size:.75rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:3px 10px;cursor:pointer}
+        .academy-root-${langId} .quiz-area{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.4rem;margin-top:1.2rem} .academy-root-${langId} .hq-item{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.8rem} .academy-root-${langId} .hq-text{font-size:.88rem;font-weight:600;margin-bottom:.6rem} .academy-root-${langId} .hq-opts{display:flex;flex-wrap:wrap;gap:6px} .academy-root-${langId} .hq-opt{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:40px;padding:5px 14px;font-size:.78rem;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;font-weight:600} .academy-root-${langId} .hq-opt:hover{border-color:${cfg.accent};color:${cfg.accent}} .academy-root-${langId} .hq-opt.selected{background:${hexA(cfg.accent,.35)};color:white;border-color:${cfg.accent}} .academy-root-${langId} .hq-opt.correct{background:#16a34a;color:white;border-color:#22c55e} .academy-root-${langId} .hq-opt.wrong{background:#b91c1c;color:white;border-color:#ef4444} .academy-root-${langId} .hq-result{background:linear-gradient(135deg,${hexA(cfg.accent,.13)},rgba(7,94,84,.14));border:1px solid ${cfg.accent};border-radius:14px;padding:1rem;text-align:center;margin-top:1rem;font-size:1rem;font-weight:700} .academy-root-${langId} .progress-pills{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap} .academy-root-${langId} .pill{width:28px;height:8px;border-radius:40px;background:var(--border);transition:.3s} .academy-root-${langId} .pill.done{background:${cfg.accent}}
+        .academy-root-${langId} .locked-panel{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(239,68,68,.08));border:1px solid rgba(251,191,36,.35);border-radius:18px;padding:1.3rem;color:#fde68a;line-height:1.7} .academy-root-${langId} .approved-panel{background:${hexA(cfg.accent,.10)};border:1px solid ${hexA(cfg.accent,.32)};border-radius:16px;padding:1rem;color:${cfg.accent};margin-bottom:1rem}
+      </style>
+      <div class="academy-hero"><div style="font-size:.65rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${cfg.accent};margin-bottom:.3rem"><i class="${cfg.icon}"></i> ${cfg.title.toUpperCase()} — MATERIAL DIDÁTICO COMPLETO</div><h2>${cfg.title} - TRILHA DE CARREIRA</h2><p style="color:var(--text-muted);font-size:.85rem;line-height:1.7">Trilha em formato de faculdade: estude as aulas, depois vá em <strong>Realize a avaliação</strong>. Para liberar o próximo nível, é preciso ver as aulas e tirar pelo menos <strong>nota 7</strong>. O progresso é salvo por login.</p></div>
+      <div class="academy-dashboard"><div class="academy-stat"><b>${lvl.topics.length}</b><span>aulas neste nível</span></div><div class="academy-stat"><b>${lvl.quiz.length}</b><span>questões na avaliação</span></div><div class="academy-stat"><b>${cp.bestGrade || "--"}</b><span>melhor nota</span></div><div class="academy-stat"><b>${status(langId,st.level)}</b><span>status do nível</span></div></div>
+      <div class="academy-nav level-nav">${LEVEL_ORDER.map(k=>{const l=cfg.levels[k], is=st.level===k, lo=!unlocked(langId,k); return `<button class="academy-btn lvl ${is?'active':''} ${lo?'locked':''}" data-level="${k}" title="${status(langId,k)}" style="${is?`border-color:${cfg.accent};color:${cfg.accent};background:${hexA(cfg.accent,.13)}`:''}">${lo?'🔒 ':''}${l.label}</button>`}).join("")}</div>
+      <div class="academy-nav mode-nav"><button class="academy-btn mode ${st.mode==='aulas'?'active':''}" data-mode="aulas"><i class="fas fa-book-open"></i> Aulas do nível</button><button class="academy-btn mode ${st.mode==='avaliacao'?'active':''}" data-mode="avaliacao"><i class="fas fa-graduation-cap"></i> Realize a avaliação</button></div>
+      ${locked ? `<div class="locked-panel"><strong>🔒 Conteúdo bloqueado.</strong><br>Para acessar <b>${lvl.label}</b>, conclua o nível anterior (${cfg.levels[prev]?.label || 'anterior'}): veja as aulas e tire nota mínima 7 na avaliação.</div>` : `<div style="background:${hexA(cfg.accent,.08)};border:1px solid ${hexA(cfg.accent,.25)};border-radius:14px;padding:1rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--text-muted);line-height:1.7"><strong style="color:${cfg.accent}">${lvl.label}</strong> — ${lvl.desc}</div>${st.mode==='aulas' ? lessonsHtml(langId,lvl,cp,cfg) : quizHtml(langId,lvl,cp,cfg)}`}
+    `;
+    bind(langId);
+  }
+  function lessonsHtml(langId,lvl,cp,cfg){ return `${cp.lessonsViewed?`<div class="approved-panel">✅ Aulas deste nível marcadas como vistas. Agora faça a avaliação para liberar o próximo nível.</div>`:''}<div>${lvl.topics.map((t,i)=>`<div class="topic-card"><div class="topic-header" data-topic="${i}"><div class="topic-icon">${t[0]}</div><div class="topic-title-txt">${i+1}. ${t[1]}</div><span class="topic-toggle" id="${langId}-toggle-${i}">▼ Ver aula</span></div><div class="topic-body" id="${langId}-body-${i}" style="display:none">${t[2]}</div></div>`).join("")}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem"><button class="btn ${cfg.btn}" data-action="mark"><i class="fas fa-check-circle"></i> Marcar aulas como vistas e realizar avaliação</button></div>`; }
+  function quizHtml(langId,lvl,cp,cfg){ return `${!cp.lessonsViewed?`<div class="locked-panel" style="margin-bottom:1rem">⚠️ Antes da avaliação, clique em <strong>Aulas do nível</strong>, estude o conteúdo e marque as aulas como vistas.</div>`:''}<div class="quiz-area"><h3><i class="fas fa-brain" style="color:${cfg.accent}"></i> Realize a avaliação — ${lvl.label} <span style="font-size:.72rem;color:var(--text-muted);font-weight:500">(${lvl.quiz.length} questões | nota mínima 7)</span></h3><div class="progress-pills">${lvl.quiz.map((_,i)=>`<div class="pill" id="${langId}-pill-${i}"></div>`).join("")}</div>${lvl.quiz.map((q,qi)=>`<div class="hq-item"><div class="hq-text">${qi+1}. ${q[0]}</div><div class="hq-opts">${q[1].map((o,oi)=>`<button class="hq-opt" data-qi="${qi}" data-oi="${oi}">${o}</button>`).join("")}</div><div id="${langId}-fb-${qi}" style="font-size:.78rem;margin-top:.4rem;display:none"></div></div>`).join("")}<div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap"><button class="btn ${cfg.btn}" data-action="submit" ${!cp.lessonsViewed?'disabled style="opacity:.5;cursor:not-allowed"':''}><i class="fas fa-check"></i> Corrigir avaliação</button><button class="btn btn-outline" data-action="reset"><i class="fas fa-redo"></i> Tentar novamente</button></div><div id="${langId}-result" style="display:none"></div></div>`; }
+  function bind(langId){ const el=document.getElementById(langId); if(!el) return; el.querySelectorAll('.lvl').forEach(b=>b.onclick=()=>{state[langId].level=b.dataset.level;state[langId].mode='aulas';state[langId].answers={};render(langId);}); el.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{state[langId].mode=b.dataset.mode;state[langId].answers={};render(langId);}); el.querySelectorAll('[data-topic]').forEach(h=>h.onclick=()=>{const i=h.dataset.topic, body=el.querySelector(`#${CSS.escape(langId)}-body-${i}`), tog=el.querySelector(`#${CSS.escape(langId)}-toggle-${i}`); if(!body) return; const open=body.style.display!=="none"; body.style.display=open?"none":"block"; if(tog) tog.textContent=open?"▼ Ver aula":"▲ Fechar aula";}); el.querySelector('[data-action="mark"]')?.addEventListener('click',()=>{const p=getP(langId); const lvl=state[langId].level; p[lvl]=p[lvl]||{}; p[lvl].lessonsViewed=true; p[lvl].viewedAt=new Date().toISOString(); setP(langId,p); state[langId].mode='avaliacao'; state[langId].answers={}; render(langId);}); el.querySelectorAll('.hq-opt').forEach(o=>o.onclick=()=>{const a=state[langId].answers; const qi=o.dataset.qi, oi=Number(o.dataset.oi); if(a[qi]?.answered) return; a[qi]={selected:oi}; el.querySelectorAll(`.hq-opt[data-qi="${qi}"]`).forEach(x=>x.classList.remove('selected')); o.classList.add('selected');}); el.querySelector('[data-action="submit"]')?.addEventListener('click',()=>submit(langId)); el.querySelector('[data-action="reset"]')?.addEventListener('click',()=>{state[langId].answers={};render(langId);}); }
+  function submit(langId){ const cfg=ACADEMY_LANGS[langId], st=state[langId], lvl=cfg.levels[st.level], el=document.getElementById("tab-"+langId) || document.getElementById(langId), p=getP(langId), cp=p[st.level]||{}; if(!cp.lessonsViewed){alert('Você precisa marcar as aulas como vistas antes de realizar a avaliação.');return;} let score=0; lvl.quiz.forEach((q,qi)=>{const sel=st.answers[qi]?.selected; const opts=el.querySelectorAll(`.hq-opt[data-qi="${qi}"]`), fb=el.querySelector(`#${CSS.escape(langId)}-fb-${qi}`); opts.forEach(b=>b.classList.remove('selected','correct','wrong')); if(sel===undefined){ if(fb){fb.textContent='⚠️ Questão não respondida';fb.style.display='block';fb.style.color='#fbbf24';} return;} if(sel===q[2]){score++; opts[sel]?.classList.add('correct'); el.querySelector(`#${CSS.escape(langId)}-pill-${qi}`)?.classList.add('done');} else {opts[sel]?.classList.add('wrong'); opts[q[2]]?.classList.add('correct');} st.answers[qi].answered=true; if(fb){fb.style.display='block'; fb.textContent=sel===q[2]?'✅ Correto!':`❌ Resposta correta: ${q[1][q[2]]}`; fb.style.color=sel===q[2]?'var(--green)':'#f87171';}}); const total=lvl.quiz.length, grade=Number(((score/total)*10).toFixed(1)), passed=grade>=7; p[st.level]=p[st.level]||{}; p[st.level].bestGrade=Math.max(p[st.level].bestGrade||0,grade); p[st.level].approved=p[st.level].bestGrade>=7; p[st.level].lastScore=score; p[st.level].total=total; p[st.level].lastAttemptAt=new Date().toISOString(); setP(langId,p); const next=LEVEL_ORDER[LEVEL_ORDER.indexOf(st.level)+1], res=el.querySelector(`#${CSS.escape(langId)}-result`); if(res){res.style.display='block'; res.innerHTML=`<div class="hq-result">${passed?'🎓':'📚'} Você acertou <strong>${score}/${total}</strong> — nota <strong>${grade}</strong><br><span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">${passed ? (next ? `Aprovado! O próximo nível foi liberado: ${cfg.levels[next].label}.` : `Aprovado! Você concluiu a trilha de ${cfg.title}.`) : 'Nota mínima 7 não alcançada. Revise as aulas e tente novamente.'} Melhor nota salva: ${p[st.level].bestGrade}</span></div>`; res.scrollIntoView({behavior:'smooth',block:'nearest'});} }
+  function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
+  function renderAll(){ fillGeneric(); Object.keys(ACADEMY_LANGS).forEach(render); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',renderAll); else renderAll();
+  window.addEventListener('auth-state-ready', renderAll);
+})();
+</script>
+
+<!-- ACADEMY_OVERRIDE_FIXED_2026_06_01: tabs js-levels/java/python/php/pandas/ia render into tab-* containers with per-login progress -->
+
+<script>
+/* JS_TAB_FINAL_FIX_2026_06_01 — altera SOMENTE a aba JavaScript para o mesmo modelo de HTML/CSS */
+(function(){
+  const JS_COURSE_LEVELS = {"aprendiz": {"label": "🟢 Aprendiz", "desc": "Começa do zero absoluto: entende o papel do JavaScript na Web, aprende a usar console, variáveis, tipos, operadores e pequenas interações sem depender de frameworks.", "topics": [["📜", "História e papel do JavaScript", "<p><strong>JavaScript</strong> nasceu em 1995 para tornar páginas interativas. No começo era usado para pequenos efeitos e validações, mas evoluiu para uma linguagem completa: roda no navegador, no servidor com Node.js, em aplicativos mobile, desktop, automações e ferramentas de desenvolvimento.</p><p>No modelo da Web, <strong>HTML estrutura</strong>, <strong>CSS apresenta</strong> e <strong>JavaScript dá comportamento</strong>. Por isso todo estudante precisa entender como JS conversa com o documento, com o usuário e com dados externos.</p>"], ["🧭", "Como estudar JavaScript do jeito certo", "<p>Não comece decorando frameworks. Primeiro domine fundamentos: variáveis, tipos, funções, arrays, objetos, DOM, eventos e assincronismo. Frameworks como React e Vue ficam muito mais fáceis quando a base está forte.</p><ul style=\"padding-left:1.2rem;line-height:2\"><li>Leia o erro antes de procurar resposta.</li><li>Teste pequenos trechos no console.</li><li>Escreva códigos simples e aumente a complexidade aos poucos.</li><li>Explique o código em voz alta como se estivesse ensinando alguém.</li></ul>"], ["⌨️", "Console, comentários e primeiro script", "<p>O console do navegador é o laboratório inicial do JavaScript. Use <strong>F12</strong> e abra a aba Console para testar comandos.</p><div class=\"code-block\"><pre>// comentário de uma linha\n/* comentário de múltiplas linhas */\n\nconsole.log(\"Olá, JavaScript!\");\nconsole.log(10 + 5);\nalert(\"Bem-vindo ao curso de JavaScript\");</pre></div><p><code>console.log</code> ajuda a depurar. <code>alert</code> mostra mensagens na tela, mas em projetos reais é usado com moderação.</p>"], ["📦", "Variáveis: let, const e var", "<p>Variáveis guardam valores. Em JavaScript moderno, use <code>const</code> quando o valor não será reatribuído e <code>let</code> quando pode mudar. Evite <code>var</code> em projetos novos.</p><div class=\"code-block\"><pre>const nome = \"Ana\";\nlet pontos = 0;\n\npontos = pontos + 10;\nconsole.log(nome, pontos);</pre></div><p><strong>Boa prática:</strong> nomes claros são melhores que abreviações confusas. Prefira <code>notaFinal</code> em vez de <code>nf</code>.</p>"], ["🔢", "Tipos de dados e operadores", "<p>JavaScript trabalha com strings, numbers, booleans, null, undefined, symbols, bigints e objetos. Entender tipos evita bugs comuns.</p><div class=\"code-block\"><pre>const produto = \"Mouse\";      // string\nconst preco = 79.90;         // number\nconst disponivel = true;     // boolean\nlet cupom;                   // undefined\nconst desconto = null;       // ausência intencional\n\nconsole.log(typeof produto);</pre></div><p>Use <code>===</code> para comparar valor e tipo. Evite <code>==</code> porque ele faz conversões implícitas.</p>"], ["🧪", "Mini projeto: calculadora simples", "<p>Projeto do nível: criar uma pequena calculadora de média. Ela treina entrada, processamento e saída.</p><div class=\"code-block\"><pre>const nota1 = 8;\nconst nota2 = 6;\nconst media = (nota1 + nota2) / 2;\n\nif (media >= 7) {\n  console.log(\"Aprovado com média\", media);\n} else {\n  console.log(\"Estude mais. Média\", media);\n}</pre></div>"]], "quiz": [["Qual é o papel principal do JavaScript em uma página web?", ["Estruturar títulos", "Dar comportamento e interatividade", "Hospedar banco de dados", "Substituir o navegador"], 1], ["Qual comando imprime informação no console?", ["print()", "console.log()", "echo()", "mostrar()"], 1], ["Em JavaScript moderno, qual palavra cria uma constante?", ["var", "let", "const", "static"], 2], ["Qual comparação é mais segura para comparar valor e tipo?", ["=", "==", "===", "=>"], 2], ["O tipo de dado true/false é chamado de:", ["string", "number", "boolean", "object"], 2], ["Qual valor representa ausência intencional?", ["undefined", "null", "NaN", "string"], 1], ["Qual ferramenta do navegador ajuda a testar JS?", ["DevTools/Console", "Paint", "Bloco de notas", "DNS"], 0], ["let é usado quando:", ["o valor pode mudar", "o valor nunca muda", "queremos criar HTML", "queremos criar CSS"], 0], ["JavaScript foi criado inicialmente para:", ["interatividade no navegador", "sistemas bancários em COBOL", "planilhas offline", "design gráfico"], 0], ["Qual é uma boa prática?", ["Usar nomes claros", "Usar apenas uma letra em tudo", "Ignorar erros", "Copiar código sem testar"], 0]]}, "iniciante": {"label": "🔵 Iniciante", "desc": "Constrói lógica real: condicionais, laços, funções, arrays, objetos, manipulação básica do DOM e eventos de usuário.", "topics": [["🧠", "Condicionais e tomada de decisão", "<p>Condicionais permitem que o programa escolha caminhos diferentes. Elas aparecem em login, carrinho, permissões, notas, filtros e validações.</p><div class=\"code-block\"><pre>const idade = 18;\n\nif (idade >= 18) {\n  console.log(\"Pode acessar\");\n} else {\n  console.log(\"Acesso negado\");\n}</pre></div>"], ["🔁", "Laços de repetição", "<p>Loops executam tarefas repetidas: percorrer listas, somar valores, montar cards e validar dados.</p><div class=\"code-block\"><pre>const linguagens = [\"HTML\", \"CSS\", \"JavaScript\"];\n\nfor (const linguagem of linguagens) {\n  console.log(\"Estudando\", linguagem);\n}</pre></div><p>Evite loops infinitos. Sempre garanta uma condição de parada.</p>"], ["🧩", "Funções: reutilização e organização", "<p>Funções são blocos reutilizáveis. Elas deixam o código mais limpo, testável e fácil de manter.</p><div class=\"code-block\"><pre>function calcularMedia(n1, n2) {\n  return (n1 + n2) / 2;\n}\n\nconst resultado = calcularMedia(8, 9);\nconsole.log(resultado);</pre></div>"], ["📚", "Arrays e métodos essenciais", "<p>Arrays guardam listas. Métodos como <code>map</code>, <code>filter</code>, <code>find</code> e <code>reduce</code> são muito usados em interfaces e APIs.</p><div class=\"code-block\"><pre>const alunos = [\n  { nome: \"Ana\", nota: 9 },\n  { nome: \"Bruno\", nota: 6 },\n  { nome: \"Carla\", nota: 8 }\n];\n\nconst aprovados = alunos.filter(a => a.nota >= 7);\nconsole.log(aprovados);</pre></div>"], ["🧱", "Objetos e dados estruturados", "<p>Objetos agrupam informações relacionadas. APIs normalmente retornam objetos ou arrays de objetos.</p><div class=\"code-block\"><pre>const usuario = {\n  nome: \"Woney\",\n  email: \"aluno@email.com\",\n  ativo: true\n};\n\nconsole.log(usuario.nome);</pre></div>"], ["🌐", "DOM e eventos", "<p>O DOM representa o HTML como objetos que podem ser selecionados e alterados com JavaScript.</p><div class=\"code-block\"><pre>const botao = document.querySelector(\"#entrar\");\nconst titulo = document.querySelector(\"h1\");\n\nbotao.addEventListener(\"click\", () => {\n  titulo.textContent = \"Você clicou!\";\n});</pre></div><p>Eventos conectam ações do usuário ao comportamento do site.</p>"]], "quiz": [["if/else serve para:", ["Repetir código", "Tomar decisões", "Criar imagens", "Hospedar APIs"], 1], ["Qual laço percorre valores de um array de forma simples?", ["for...of", "style", "href", "meta"], 0], ["Funções ajudam principalmente a:", ["Duplicar código", "Reutilizar e organizar código", "Apagar o HTML", "Trocar DNS"], 1], ["filter retorna:", ["Um novo array filtrado", "Apenas o primeiro item", "Uma string CSS", "Um banco de dados"], 0], ["map é usado para:", ["Transformar itens de um array", "Apagar eventos", "Validar domínio", "Criar servidor"], 0], ["Objeto em JS é indicado por:", ["{}", "<>", "##", "()()"], 0], ["querySelector seleciona:", ["Elemento do DOM", "Banco de dados", "Arquivo PDF", "Servidor"], 0], ["addEventListener serve para:", ["Ouvir eventos", "Criar tags HTML automaticamente", "Formatar moeda", "Instalar pacote"], 0], ["return em função serve para:", ["Retornar um valor", "Criar CSS", "Fechar navegador", "Forçar erro"], 0], ["Qual estrutura guarda uma lista?", ["Array", "boolean", "null", "prompt"], 0]]}, "intermediario": {"label": "🟡 Intermediário", "desc": "Avança para projetos reais: módulos, fetch, async/await, tratamento de erros, formulários, validação, storage e organização de código.", "topics": [["📦", "Módulos e organização de projeto", "<p>Em projetos maiores, separar responsabilidades evita arquivos gigantes. Use módulos para dividir funções, serviços, componentes e configurações.</p><div class=\"code-block\"><pre>// math.js\nexport function somar(a, b) {\n  return a + b;\n}\n\n// app.js\nimport { somar } from \"./math.js\";\nconsole.log(somar(2, 3));</pre></div>"], ["🌍", "Fetch API e consumo de dados", "<p>Sites modernos buscam dados de APIs. A Fetch API permite fazer requisições HTTP.</p><div class=\"code-block\"><pre>async function carregarUsuario() {\n  const resposta = await fetch(\"https://api.exemplo.com/users/1\");\n  const usuario = await resposta.json();\n  console.log(usuario);\n}</pre></div><p>Sempre trate erros de rede e respostas inválidas.</p>"], ["⏳", "Promises e async/await", "<p>JavaScript não deve travar a interface enquanto espera rede, banco ou arquivos. Promises representam resultados futuros; <code>async/await</code> deixa a leitura mais clara.</p><div class=\"code-block\"><pre>async function executar() {\n  try {\n    const dados = await carregarUsuario();\n    console.log(dados);\n  } catch (erro) {\n    console.error(\"Falha ao carregar\", erro);\n  }\n}</pre></div>"], ["✅", "Formulários e validação", "<p>Valide no frontend para orientar o usuário, mas nunca confie apenas nele. O backend também precisa validar.</p><div class=\"code-block\"><pre>const form = document.querySelector(\"form\");\n\nform.addEventListener(\"submit\", (event) => {\n  event.preventDefault();\n  const email = form.email.value.trim();\n\n  if (!email.includes(\"@\")) {\n    alert(\"Digite um e-mail válido\");\n    return;\n  }\n\n  console.log(\"Enviar dados\", email);\n});</pre></div>"], ["💾", "localStorage e estado simples", "<p><code>localStorage</code> salva pequenos dados no navegador. É útil para preferências, progresso e configurações simples. Não salve senhas ou tokens sensíveis sem entender riscos.</p><div class=\"code-block\"><pre>localStorage.setItem(\"tema\", \"escuro\");\nconst tema = localStorage.getItem(\"tema\");\nconsole.log(tema);</pre></div>"], ["🧪", "Projeto intermediário: To-do com persistência", "<p>Construa uma lista de tarefas com adicionar, concluir, remover e salvar no localStorage. Esse projeto treina DOM, eventos, arrays, objetos, JSON e estado.</p><div class=\"code-block\"><pre>const tarefas = JSON.parse(localStorage.getItem(\"tarefas\") || \"[]\");\ntarefas.push({ texto: \"Estudar JS\", feita: false });\nlocalStorage.setItem(\"tarefas\", JSON.stringify(tarefas));</pre></div>"]], "quiz": [["import/export pertencem ao sistema de:", ["Módulos", "Cores CSS", "DNS", "Imagens"], 0], ["fetch é usado para:", ["Fazer requisições HTTP", "Criar tabela CSS", "Desligar evento", "Compilar Java"], 0], ["await só pode ser usado diretamente dentro de:", ["função async", "arquivo CSS", "comentário", "objeto JSON puro"], 0], ["try/catch serve para:", ["Tratar erros", "Criar tags", "Alterar fonte", "Criar arrays automaticamente"], 0], ["preventDefault em formulário geralmente:", ["Evita envio padrão/reload", "Remove CSS", "Cria usuário", "Apaga localStorage"], 0], ["localStorage salva dados:", ["No navegador", "No roteador", "No HTML sem JS", "Na memória da GPU"], 0], ["JSON.stringify transforma:", ["Objeto em string JSON", "CSS em HTML", "número em boolean", "array em função"], 0], ["Validação no frontend é suficiente para segurança?", ["Sim, sempre", "Não, backend também valida", "Só em localhost", "Apenas com CSS"], 1], ["Uma API geralmente retorna dados em:", ["JSON", "JPEG obrigatório", "CSS", "Fonte"], 0], ["Organizar código em módulos ajuda a:", ["Manter e escalar projeto", "Deixar tudo global", "Remover testes", "Ignorar erros"], 0]]}, "avancado": {"label": "🟠 Avançado", "desc": "Prepara para nível profissional: closures, protótipos, classes, event loop, performance, segurança, testes, TypeScript, Node.js e arquitetura.", "topics": [["🧬", "Closures e escopo", "<p>Closure ocorre quando uma função lembra variáveis do escopo onde foi criada. É essencial para encapsulamento, factories e callbacks.</p><div class=\"code-block\"><pre>function criarContador() {\n  let valor = 0;\n\n  return function incrementar() {\n    valor++;\n    return valor;\n  };\n}\n\nconst contador = criarContador();\nconsole.log(contador());\nconsole.log(contador());</pre></div>"], ["🏗️", "Protótipos, classes e composição", "<p>JavaScript usa herança prototípica. Classes são uma sintaxe mais amigável sobre esse modelo. Em muitos casos, composição é mais flexível que herança profunda.</p><div class=\"code-block\"><pre>class Aluno {\n  constructor(nome) {\n    this.nome = nome;\n  }\n\n  estudar() {\n    return `${this.nome} está estudando`;\n  }\n}</pre></div>"], ["🔄", "Event loop, microtasks e macrotasks", "<p>O Event Loop explica a ordem de execução do JavaScript. Promises entram na fila de microtasks; <code>setTimeout</code> entra em macrotasks. Entender isso evita bugs de ordem e travamentos.</p><div class=\"code-block\"><pre>console.log(\"A\");\nsetTimeout(() => console.log(\"B\"), 0);\nPromise.resolve().then(() => console.log(\"C\"));\nconsole.log(\"D\");\n// ordem: A, D, C, B</pre></div>"], ["🚀", "Performance e Core Web Vitals", "<p>Performance não é apenas deixar rápido: é medir, priorizar e melhorar experiência. Use lazy loading, debounce, throttle, divisão de bundle, cache e manipulação eficiente do DOM.</p><div class=\"code-block\"><pre>function debounce(fn, delay) {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delay);\n  };\n}</pre></div>"], ["🔐", "Segurança no frontend", "<p>Principais riscos: XSS, exposição de chaves, armazenamento inseguro, dependências maliciosas e confiança excessiva no cliente. Nunca coloque segredos reais no JavaScript público.</p><ul style=\"padding-left:1.2rem;line-height:2\"><li>Sanitize HTML vindo de usuário.</li><li>Prefira cookies seguros quando adequado.</li><li>Valide no backend.</li><li>Mantenha dependências atualizadas.</li></ul>"], ["🟦", "TypeScript, testes e carreira", "<p>TypeScript ajuda projetos grandes com tipagem estática. Testes reduzem regressões. Um dev JavaScript forte sabe explicar decisões, escrever código legível, revisar PRs e pensar em produto.</p><div class=\"code-block\"><pre>type Usuario = {\n  id: string;\n  nome: string;\n  papel: \"admin\" | \"aluno\";\n};</pre></div>"]], "quiz": [["Closure é uma função que:", ["Lembra o escopo onde foi criada", "Apaga variáveis globais", "Substitui HTML", "Cria banco SQL"], 0], ["Classes em JS são baseadas em:", ["Protótipos", "JVM", "PHP", "CSS Grid"], 0], ["Promises entram na fila de:", ["Microtasks", "Macrotasks sempre", "Eventos CSS", "DNS"], 0], ["setTimeout entra geralmente em:", ["Macrotask", "Microtask", "Call stack fixa", "LocalStorage"], 0], ["Debounce ajuda em:", ["Eventos repetidos como digitação", "Criação de senhas", "Semântica HTML", "Importação de fonte"], 0], ["XSS envolve:", ["Injeção de script", "Erro de margem", "Cache de imagem", "Loop em array"], 0], ["Não é seguro salvar no JS público:", ["Segredos/chaves privadas", "Textos de botão", "Classes CSS", "Nomes de funções"], 0], ["TypeScript adiciona principalmente:", ["Tipagem estática", "Novo navegador", "Servidor físico", "Banco automático"], 0], ["Testes ajudam a:", ["Reduzir regressões", "Substituir lógica", "Ignorar erros", "Remover acessibilidade"], 0], ["Core Web Vitals medem:", ["Experiência/performance", "Banco de dados", "Nome do domínio", "Senha do usuário"], 0]]}};
+  const ORDER = ["aprendiz","iniciante","intermediario","avancado"];
+  const accent = "#fbbf24";
+  const tabsNav = document.getElementById("tabsNav");
+  const main = document.getElementById("mainContent");
+  if(!tabsNav || !main) return;
+
+  function ensureJsTabButton(){
+    const oldBtn = document.querySelector('.tab-btn[data-tab="js-levels"]') || document.querySelector('.tab-btn[data-tab="js"]');
+    if(oldBtn){
+      const clone = oldBtn.cloneNode(true);
+      clone.dataset.tab = "js";
+      clone.innerHTML = '<i class="fab fa-js"></i> JavaScript 🚀';
+      clone.addEventListener('click', () => { if(typeof switchTab === 'function') switchTab('js'); });
+      oldBtn.replaceWith(clone);
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.dataset.tab = 'js';
+    btn.innerHTML = '<i class="fab fa-js"></i> JavaScript 🚀';
+    btn.addEventListener('click', () => { if(typeof switchTab === 'function') switchTab('js'); });
+    const cssBtn = document.querySelector('.tab-btn[data-tab="css"]');
+    if(cssBtn && cssBtn.nextSibling) tabsNav.insertBefore(btn, cssBtn.nextSibling); else tabsNav.appendChild(btn);
+  }
+
+  function ensureJsContainer(){
+    let div = document.getElementById('tab-js');
+    const old = document.getElementById('tab-js-levels');
+    if(!div && old){ old.id = 'tab-js'; div = old; }
+    if(!div){ div = document.createElement('div'); div.className = 'tab-content'; div.id = 'tab-js'; main.appendChild(div); }
+    div.classList.add('js-final-root');
+    return div;
+  }
+
+  ensureJsTabButton();
+  const div = ensureJsContainer();
+  let activeLevel = 'aprendiz';
+  let mode = 'aulas';
+  let answers = {};
+
+  function userKey(){ const u = window._currentUser; return (u && (u.uid || u.email)) || 'visitante'; }
+  function progressKey(){ return 'devscode_js_progress_final_' + String(userKey()).replace(/[^a-zA-Z0-9@._-]/g,'_'); }
+  function getProgress(){ try{ return JSON.parse(localStorage.getItem(progressKey()) || '{}'); }catch(e){ return {}; } }
+  function setProgress(p){ localStorage.setItem(progressKey(), JSON.stringify(p)); }
+  function isUnlocked(level){ const idx = ORDER.indexOf(level); if(idx <= 0) return true; const prev = ORDER[idx-1]; const p = getProgress(); return !!(p[prev] && p[prev].lessonsViewed && p[prev].approved); }
+  function status(level){ const p = getProgress()[level] || {}; if(!isUnlocked(level)) return '🔒 Bloqueado'; if(p.approved) return '✅ Aprovado — nota ' + p.bestGrade; if(p.lessonsViewed) return '📚 Aulas vistas — faça a avaliação'; return '▶️ Liberado'; }
+  function nextLevel(level){ return ORDER[ORDER.indexOf(level)+1]; }
+
+  function render(){
+    const lvl = JS_COURSE_LEVELS[activeLevel];
+    const progress = getProgress();
+    const cp = progress[activeLevel] || {};
+    const locked = !isUnlocked(activeLevel);
+    const prev = ORDER[ORDER.indexOf(activeLevel)-1];
+    div.innerHTML = `
+      <style>
+        .js-final-root .js-hero{background:linear-gradient(135deg,rgba(251,191,36,.10),rgba(249,115,22,.06));border:1px solid rgba(251,191,36,.28);border-radius:20px;padding:1.4rem 1.6rem;margin-bottom:1.4rem;position:relative;overflow:hidden}
+        .js-final-root .js-hero::before{content:'';position:absolute;top:-55px;right:-55px;width:240px;height:240px;background:radial-gradient(circle,rgba(251,191,36,.18),transparent 70%);border-radius:50%}
+        .js-final-root .js-hero h2{font-size:1.45rem;font-weight:900;background:linear-gradient(90deg,#fbbf24,#f97316,#22c55e);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.35rem}
+        .js-final-root .js-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem}
+        .js-final-root .js-btn{border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:800;font-size:.78rem;padding:7px 16px;border-radius:40px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px}
+        .js-final-root .js-btn:hover{border-color:#fbbf24;color:var(--text)} .js-final-root .js-btn.active{border-color:#fbbf24;color:#fbbf24;background:rgba(251,191,36,.12)} .js-final-root .js-btn.locked{opacity:.52;filter:saturate(.5)}
+        .js-final-root .js-dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;margin-bottom:1.1rem}
+        .js-final-root .js-stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:.9rem} .js-final-root .js-stat b{display:block;font-size:1.08rem;color:#fbbf24;margin-bottom:.2rem} .js-final-root .js-stat span{font-size:.72rem;color:var(--text-muted)}
+        .js-final-root .js-topic-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.25rem;margin-bottom:1rem;transition:border-color .2s} .js-final-root .js-topic-card:hover{border-color:rgba(251,191,36,.38)}
+        .js-final-root .js-topic-header{display:flex;align-items:center;gap:10px;margin-bottom:.85rem;cursor:pointer} .js-final-root .js-topic-icon{width:40px;height:40px;border-radius:12px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0} .js-final-root .js-topic-title{font-size:1rem;font-weight:800} .js-final-root .js-topic-toggle{margin-left:auto;color:var(--text-muted);font-size:.75rem;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:3px 10px}
+        .js-final-root .js-topic-body{font-size:.85rem;line-height:1.85;color:var(--text-muted)} .js-final-root .js-topic-body p{margin-bottom:.7rem;color:var(--text-muted)} .js-final-root .js-topic-body strong{color:var(--text)} .js-final-root .js-topic-body code{background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.22);color:#fbbf24;border-radius:5px;padding:1px 5px;font-family:'Space Mono',monospace;font-size:.78rem}
+        .js-final-root .js-quiz-area{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.4rem;margin-top:1.2rem} .js-final-root .js-hq-item{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.8rem} .js-final-root .js-hq-text{font-size:.88rem;font-weight:700;margin-bottom:.6rem} .js-final-root .js-hq-opts{display:flex;flex-wrap:wrap;gap:6px}
+        .js-final-root .js-hq-opt{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:40px;padding:5px 14px;font-size:.78rem;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;font-weight:700} .js-final-root .js-hq-opt:hover{border-color:#fbbf24;color:#fbbf24} .js-final-root .js-hq-opt.selected{background:#92400e;color:#fde68a;border-color:#fbbf24} .js-final-root .js-hq-opt.correct{background:#16a34a;color:white;border-color:#22c55e} .js-final-root .js-hq-opt.wrong{background:#b91c1c;color:white;border-color:#ef4444}
+        .js-final-root .js-result{background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(249,115,22,.1));border:1px solid #fbbf24;border-radius:14px;padding:1rem;text-align:center;margin-top:1rem;font-size:1rem;font-weight:800} .js-final-root .js-pills{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap} .js-final-root .js-pill{width:28px;height:8px;border-radius:40px;background:var(--border);transition:.3s} .js-final-root .js-pill.done{background:#fbbf24}
+        .js-final-root .js-locked{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(239,68,68,.08));border:1px solid rgba(251,191,36,.35);border-radius:18px;padding:1.3rem;color:#fde68a;line-height:1.7} .js-final-root .js-approved{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:16px;padding:1rem;color:#fde68a;margin-bottom:1rem}
+      </style>
+      <div class="js-hero"><div style="font-size:.65rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fbbf24;margin-bottom:.3rem"><i class="fab fa-js"></i> JAVASCRIPT — MATERIAL DIDÁTICO COMPLETO</div><h2>JavaScript - TRILHA DE CARREIRA</h2><p style="color:var(--text-muted);font-size:.85rem;line-height:1.75">Trilha no mesmo modelo da HTML/CSS: aulas separadas da avaliação. Para liberar o próximo nível, o aluno precisa estudar o nível atual, marcar as aulas como vistas e tirar pelo menos <strong>nota 7</strong>. O progresso é salvo por login.</p></div>
+      <div class="js-dashboard"><div class="js-stat"><b>${lvl.topics.length}</b><span>aulas neste nível</span></div><div class="js-stat"><b>${lvl.quiz.length}</b><span>questões na avaliação</span></div><div class="js-stat"><b>${cp.bestGrade || '--'}</b><span>melhor nota</span></div><div class="js-stat"><b>${status(activeLevel)}</b><span>status do nível</span></div></div>
+      <div class="js-nav">${ORDER.map(k => `<button class="js-btn lvl ${activeLevel===k?'active':''} ${!isUnlocked(k)?'locked':''}" data-level="${k}" title="${status(k)}">${!isUnlocked(k)?'🔒 ':''}${JS_COURSE_LEVELS[k].label}</button>`).join('')}</div>
+      <div class="js-nav"><button class="js-btn mode ${mode==='aulas'?'active':''}" data-mode="aulas"><i class="fas fa-book-open"></i> Aulas do nível</button><button class="js-btn mode ${mode==='avaliacao'?'active':''}" data-mode="avaliacao"><i class="fas fa-graduation-cap"></i> Realize a avaliação</button></div>
+      ${locked ? `<div class="js-locked"><strong>🔒 Conteúdo bloqueado.</strong><br>Para acessar <b>${lvl.label}</b>, conclua o nível anterior (${JS_COURSE_LEVELS[prev]?.label || 'anterior'}): veja as aulas e tire nota mínima 7 na avaliação.</div>` : `<div style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:1rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--text-muted);line-height:1.7"><strong style="color:#fbbf24">${lvl.label}</strong> — ${lvl.desc}</div>${mode==='aulas' ? lessonsHtml(lvl,cp) : quizHtml(lvl,cp)}`}
+    `;
+    bind();
+  }
+
+  function lessonsHtml(lvl, cp){
+    return `${cp.lessonsViewed ? '<div class="js-approved">✅ Aulas deste nível marcadas como vistas. Agora faça a avaliação para liberar o próximo nível.</div>' : ''}<div>${lvl.topics.map((t,i)=>`<div class="js-topic-card"><div class="js-topic-header" data-topic="${i}"><div class="js-topic-icon">${t[0]}</div><div class="js-topic-title">${i+1}. ${t[1]}</div><span class="js-topic-toggle" id="js-toggle-${i}">▼ Ver aula</span></div><div class="js-topic-body" id="js-body-${i}" style="display:none">${t[2]}</div></div>`).join('')}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem"><button class="btn btn-outline" data-action="mark"><i class="fas fa-check-circle"></i> Marcar aulas como vistas e realizar avaliação</button></div>`;
+  }
+  function quizHtml(lvl, cp){
+    return `${!cp.lessonsViewed ? '<div class="js-locked" style="margin-bottom:1rem">⚠️ Antes da avaliação, clique em <strong>Aulas do nível</strong>, estude o conteúdo e marque as aulas como vistas.</div>' : ''}<div class="js-quiz-area"><h3><i class="fas fa-brain" style="color:#fbbf24"></i> Realize a avaliação — ${lvl.label} <span style="font-size:.72rem;color:var(--text-muted);font-weight:500">(${lvl.quiz.length} questões | nota mínima 7)</span></h3><div class="js-pills">${lvl.quiz.map((_,i)=>`<div class="js-pill" id="js-pill-${i}"></div>`).join('')}</div>${lvl.quiz.map((q,qi)=>`<div class="js-hq-item"><div class="js-hq-text">${qi+1}. ${q[0]}</div><div class="js-hq-opts">${q[1].map((o,oi)=>`<button class="js-hq-opt" data-qi="${qi}" data-oi="${oi}">${o}</button>`).join('')}</div><div id="js-fb-${qi}" style="font-size:.78rem;margin-top:.4rem;display:none"></div></div>`).join('')}<div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap"><button class="btn btn-outline" data-action="submit" ${!cp.lessonsViewed?'disabled style="opacity:.5;cursor:not-allowed"':''}><i class="fas fa-check"></i> Corrigir avaliação</button><button class="btn btn-outline" data-action="reset"><i class="fas fa-redo"></i> Tentar novamente</button></div><div id="js-result" style="display:none"></div></div>`;
+  }
+  function bind(){
+    div.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { activeLevel = b.dataset.level; mode = 'aulas'; answers = {}; render(); }));
+    div.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { mode = b.dataset.mode; answers = {}; render(); }));
+    div.querySelectorAll('[data-topic]').forEach(h => h.addEventListener('click', () => { const i=h.dataset.topic; const body=div.querySelector('#js-body-'+i); const tog=div.querySelector('#js-toggle-'+i); if(!body) return; const open=body.style.display !== 'none'; body.style.display = open ? 'none' : 'block'; if(tog) tog.textContent = open ? '▼ Ver aula' : '▲ Fechar aula'; }));
+    const mark = div.querySelector('[data-action="mark"]'); if(mark) mark.addEventListener('click', () => { const p=getProgress(); p[activeLevel]=p[activeLevel]||{}; p[activeLevel].lessonsViewed=true; p[activeLevel].viewedAt=new Date().toISOString(); setProgress(p); mode='avaliacao'; answers={}; render(); });
+    div.querySelectorAll('.js-hq-opt').forEach(o => o.addEventListener('click', () => { const qi=o.dataset.qi, oi=Number(o.dataset.oi); if(answers[qi]?.answered) return; answers[qi]={selected:oi}; div.querySelectorAll(`.js-hq-opt[data-qi="${qi}"]`).forEach(x=>x.classList.remove('selected')); o.classList.add('selected'); }));
+    const submit = div.querySelector('[data-action="submit"]'); if(submit) submit.addEventListener('click', submitQuiz);
+    const reset = div.querySelector('[data-action="reset"]'); if(reset) reset.addEventListener('click', () => { answers={}; render(); });
+  }
+  function submitQuiz(){
+    const p=getProgress(); const cp=p[activeLevel]||{}; if(!cp.lessonsViewed){ alert('Você precisa marcar as aulas como vistas antes de realizar a avaliação.'); return; }
+    const lvl=JS_COURSE_LEVELS[activeLevel]; let score=0;
+    lvl.quiz.forEach((q,qi) => { const sel=answers[qi]?.selected; const opts=div.querySelectorAll(`.js-hq-opt[data-qi="${qi}"]`); const fb=div.querySelector('#js-fb-'+qi); opts.forEach(b=>b.classList.remove('selected','correct','wrong')); if(sel === undefined){ if(fb){ fb.textContent='⚠️ Questão não respondida'; fb.style.display='block'; fb.style.color='#fbbf24'; } return; } if(sel===q[2]){ score++; opts[sel]?.classList.add('correct'); div.querySelector('#js-pill-'+qi)?.classList.add('done'); } else { opts[sel]?.classList.add('wrong'); opts[q[2]]?.classList.add('correct'); } answers[qi].answered=true; if(fb){ fb.style.display='block'; fb.textContent=sel===q[2]?'✅ Correto!':'❌ Resposta correta: '+q[1][q[2]]; fb.style.color=sel===q[2]?'var(--green)':'#f87171'; } });
+    const total=lvl.quiz.length; const grade=Number(((score/total)*10).toFixed(1)); const passed=grade>=7; p[activeLevel]=p[activeLevel]||{}; p[activeLevel].bestGrade=Math.max(p[activeLevel].bestGrade||0,grade); p[activeLevel].approved=p[activeLevel].bestGrade>=7; p[activeLevel].lastScore=score; p[activeLevel].total=total; p[activeLevel].lastAttemptAt=new Date().toISOString(); setProgress(p);
+    const nxt=nextLevel(activeLevel); const res=div.querySelector('#js-result'); if(res){ res.style.display='block'; res.innerHTML=`<div class="js-result">${passed?'🎓':'📚'} Você acertou <strong>${score}/${total}</strong> — nota <strong>${grade}</strong><br><span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">${passed ? (nxt ? `Aprovado! O próximo nível foi liberado: ${JS_COURSE_LEVELS[nxt].label}.` : 'Aprovado! Você concluiu a trilha de JavaScript.') : 'Nota mínima 7 não alcançada. Revise as aulas e tente novamente.'} Melhor nota salva: ${p[activeLevel].bestGrade}</span></div>`; res.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  }
+  render();
+  window.addEventListener('auth-state-ready', render);
+})();
+</script>
+
 </body>
 </html>
